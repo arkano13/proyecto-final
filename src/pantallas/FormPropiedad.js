@@ -1,114 +1,667 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
+
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  ActivityIndicator,
+  Image,
+  Platform,
+} from 'react-native';
+
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
+
 import styles from '../estilos/FormPropiedadStyles';
+import { API_URLS } from '../config/config';
 
-const TIPOS = ['Casa', 'Apartamento', 'Local', 'Oficina', 'Bodega', 'Terreno'];
+const TIPOS = [
+  'Casa',
+  'Apartamento',
+  'Local',
+  'Oficina',
+  'Bodega',
+  'Terreno',
+];
 
-export default function FormPropiedad({ navigation, route }) {
+export default function FormPropiedad({
+  navigation,
+  route,
+}) {
+  const usuario = route.params?.usuario;
   const propExistente = route.params?.propiedad;
-  const [titulo, setTitulo] = useState(propExistente?.titulo || '');
-  const [descripcion, setDescripcion] = useState(propExistente?.descripcion || '');
-  const [direccion, setDireccion] = useState(propExistente?.direccion || '');
-  const [precio, setPrecio] = useState(propExistente?.precio?.toString() || '');
-  const [tipo, setTipo] = useState(propExistente?.tipo || 'Casa');
+  const editando = Boolean(propExistente?.id);
+
+  const [titulo, setTitulo] = useState(
+    propExistente?.titulo || ''
+  );
+
+  const [descripcion, setDescripcion] = useState(
+    propExistente?.descripcion || ''
+  );
+
+  const [direccion, setDireccion] = useState(
+    propExistente?.direccion || ''
+  );
+
+  const [precio, setPrecio] = useState(
+    propExistente?.precio?.toString() || ''
+  );
+
+  const [tipo, setTipo] = useState(
+    propExistente?.tipo || 'Casa'
+  );
+
+  const [habitaciones, setHabitaciones] = useState(
+    propExistente?.habitaciones?.toString() || '0'
+  );
+
+  const [banos, setBanos] = useState(
+    propExistente?.banos?.toString() || '0'
+  );
+
   const [foto, setFoto] = useState(null);
-  const [ubicacion, setUbicacion] = useState(null);
+
+  const [ubicacion, setUbicacion] = useState(
+    propExistente?.latitud !== null &&
+      propExistente?.latitud !== undefined &&
+      propExistente?.longitud !== null &&
+      propExistente?.longitud !== undefined
+      ? {
+          latitude: Number(propExistente.latitud),
+          longitude: Number(propExistente.longitud),
+        }
+      : null
+  );
+
+  const [guardando, setGuardando] =
+    useState(false);
 
   const tomarFoto = async () => {
-    const permiso = await ImagePicker.requestCameraPermissionsAsync();
+    const permiso =
+      await ImagePicker.requestCameraPermissionsAsync();
+
     if (!permiso.granted) {
-      Alert.alert('Permiso requerido', 'Necesitamos acceso a tu cámara.');
+      Alert.alert(
+        'Permiso requerido',
+        'Necesitamos acceso a tu cámara.'
+      );
+
       return;
     }
-    const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
-    if (!result.canceled) {
-      setFoto(result.assets[0].uri);
-      Alert.alert('✅ Foto tomada', 'La foto se adjuntó correctamente.');
+
+    const resultado =
+      await ImagePicker.launchCameraAsync({
+        quality: 0.7,
+        allowsEditing: false,
+      });
+
+    if (!resultado.canceled) {
+      setFoto(resultado.assets[0]);
     }
   };
 
   const obtenerUbicacion = async () => {
-    const permiso = await Location.requestForegroundPermissionsAsync();
-    if (!permiso.granted) {
-      Alert.alert('Permiso requerido', 'Necesitamos acceso a tu ubicación.');
-      return;
+    try {
+      const permiso =
+        await Location.requestForegroundPermissionsAsync();
+
+      if (!permiso.granted) {
+        Alert.alert(
+          'Permiso requerido',
+          'Necesitamos acceso a tu ubicación.'
+        );
+
+        return;
+      }
+
+      const localizacion =
+        await Location.getCurrentPositionAsync({});
+
+      setUbicacion(localizacion.coords);
+
+      if (Platform.OS === 'web') {
+        window.alert(
+          'La ubicación se obtuvo correctamente.'
+        );
+      } else {
+        Alert.alert(
+          '📍 Ubicación obtenida',
+          'La ubicación se guardó correctamente.'
+        );
+      }
+    } catch (error) {
+      console.error(
+        'Error al obtener ubicación:',
+        error
+      );
+
+      if (Platform.OS === 'web') {
+        window.alert(
+          'No se pudo obtener la ubicación.'
+        );
+      } else {
+        Alert.alert(
+          'Error',
+          'No se pudo obtener la ubicación.'
+        );
+      }
     }
-    const loc = await Location.getCurrentPositionAsync({});
-    setUbicacion(loc.coords);
-    Alert.alert('📍 Ubicación obtenida', `Lat: ${loc.coords.latitude.toFixed(4)}, Lon: ${loc.coords.longitude.toFixed(4)}`);
   };
 
-  const guardar = () => {
-    if (!titulo.trim() || !precio.trim() || !direccion.trim()) {
-      Alert.alert('Campos requeridos', 'Título, dirección y precio son obligatorios.');
+  const subirFotografia = async propiedadId => {
+    if (!foto) {
+      return null;
+    }
+
+    const nombre =
+      foto.fileName ||
+      foto.file?.name ||
+      `propiedad_${propiedadId}.jpg`;
+
+    const tipoArchivo =
+      foto.mimeType ||
+      foto.file?.type ||
+      'image/jpeg';
+
+    const formulario = new FormData();
+
+    formulario.append(
+      'tableName',
+      'tbl_propiedad_img_final'
+    );
+
+    formulario.append(
+      'fieldID',
+      'propiedad_id'
+    );
+
+    formulario.append(
+      'fieldRuta',
+      'propiedad_img_ruta'
+    );
+
+    formulario.append(
+      'recordId',
+      propiedadId.toString()
+    );
+
+    if (Platform.OS === 'web') {
+      let archivoWeb = foto.file;
+
+      if (!archivoWeb) {
+        const respuestaArchivo = await fetch(
+          foto.uri
+        );
+
+        archivoWeb =
+          await respuestaArchivo.blob();
+      }
+
+      formulario.append(
+        'image',
+        archivoWeb,
+        nombre
+      );
+    } else {
+      formulario.append('image', {
+        uri: foto.uri,
+        name: nombre,
+        type: tipoArchivo,
+      });
+    }
+
+    const respuesta = await fetch(
+      API_URLS.SUBIR_FOTO,
+      {
+        method: 'POST',
+        body: formulario,
+      }
+    );
+
+    const datos = await respuesta.json();
+
+    if (!respuesta.ok || !datos.exito) {
+      throw new Error(
+        datos.mensaje ||
+          'No se pudo subir la fotografía.'
+      );
+    }
+
+    return datos;
+  };
+
+  const mostrarError = mensaje => {
+    if (Platform.OS === 'web') {
+      window.alert(mensaje);
+    } else {
+      Alert.alert('Error', mensaje);
+    }
+  };
+
+  const mostrarActualizacionExitosa = () => {
+    if (Platform.OS === 'web') {
+      window.alert(
+        'La propiedad se actualizó con éxito.'
+      );
+
+      navigation.goBack();
       return;
     }
-    Alert.alert('✅ Guardado', `Propiedad "${titulo}" guardada correctamente.`, [
-      { text: 'OK', onPress: () => navigation.goBack() },
-    ]);
+
+    Alert.alert(
+      '✅ Propiedad actualizada',
+      'La propiedad se actualizó con éxito.',
+      [
+        {
+          text: 'Aceptar',
+          onPress: () =>
+            navigation.goBack(),
+        },
+      ]
+    );
+  };
+
+  const guardar = async () => {
+    if (!usuario?.id) {
+      mostrarError(
+        'No se encontró la información del usuario.'
+      );
+
+      return;
+    }
+
+    if (
+      !titulo.trim() ||
+      !precio.trim() ||
+      !direccion.trim()
+    ) {
+      mostrarError(
+        'Título, dirección y precio son obligatorios.'
+      );
+
+      return;
+    }
+
+    const precioNumero = Number(
+      precio.replace(',', '.')
+    );
+
+    const habitacionesNumero = Number(
+      habitaciones || 0
+    );
+
+    const banosNumero = Number(
+      banos || 0
+    );
+
+    if (
+      !Number.isFinite(precioNumero) ||
+      precioNumero <= 0
+    ) {
+      mostrarError(
+        'El precio debe ser mayor que cero.'
+      );
+
+      return;
+    }
+
+    if (
+      !Number.isInteger(habitacionesNumero) ||
+      habitacionesNumero < 0 ||
+      !Number.isInteger(banosNumero) ||
+      banosNumero < 0
+    ) {
+      mostrarError(
+        'Las habitaciones y baños deben ser números enteros.'
+      );
+
+      return;
+    }
+
+    setGuardando(true);
+
+    try {
+      const cuerpo = {
+        usuario_id: usuario.id,
+        titulo: titulo.trim(),
+        descripcion: descripcion.trim(),
+        tipo,
+        precio: precioNumero,
+        direccion: direccion.trim(),
+        habitaciones: habitacionesNumero,
+        banos: banosNumero,
+        latitud: ubicacion?.latitude ?? null,
+        longitud: ubicacion?.longitude ?? null,
+      };
+
+      if (editando) {
+        cuerpo.propiedad_id =
+          propExistente.id;
+      }
+
+      const endpoint = editando
+        ? API_URLS.ACTUALIZAR_PROPIEDAD
+        : API_URLS.CREAR_PROPIEDAD;
+
+      const respuesta = await fetch(
+        endpoint,
+        {
+          method: 'POST',
+
+          headers: {
+            'Content-Type': 'application/json',
+          },
+
+          body: JSON.stringify(cuerpo),
+        }
+      );
+
+      const datos = await respuesta.json();
+
+      if (!respuesta.ok || !datos.exito) {
+        mostrarError(
+          datos.mensaje ||
+            'No se pudo guardar la propiedad.'
+        );
+
+        return;
+      }
+
+      const propiedadId = editando
+        ? propExistente.id
+        : datos.propiedad.id;
+
+      if (foto) {
+        try {
+          await subirFotografia(propiedadId);
+        } catch (errorFoto) {
+          console.error(
+            'Error al subir fotografía:',
+            errorFoto
+          );
+
+          if (Platform.OS === 'web') {
+            window.alert(
+              'La propiedad se guardó, pero la fotografía no pudo subirse.'
+            );
+
+            navigation.goBack();
+          } else {
+            Alert.alert(
+              'Propiedad guardada',
+              'La propiedad se guardó, pero la fotografía no pudo subirse.',
+              [
+                {
+                  text: 'Aceptar',
+                  onPress: () =>
+                    navigation.goBack(),
+                },
+              ]
+            );
+          }
+
+          return;
+        }
+      }
+
+      /*
+       * Solamente mostramos una alerta
+       * cuando se actualiza una propiedad.
+       */
+      if (editando) {
+        mostrarActualizacionExitosa();
+      } else {
+        navigation.goBack();
+      }
+    } catch (errorPeticion) {
+      console.error(
+        'Error al guardar propiedad:',
+        errorPeticion
+      );
+
+      mostrarError(
+        'No se pudo conectar con el servidor.'
+      );
+    } finally {
+      setGuardando(false);
+    }
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitulo}>{propExistente ? '✏️ Editar Propiedad' : '➕ Nueva Propiedad'}</Text>
-        <Text style={styles.headerSub}>Completa la información</Text>
+        <Text style={styles.headerTitulo}>
+          {editando
+            ? '✏️ Editar Propiedad'
+            : '➕ Nueva Propiedad'}
+        </Text>
+
+        <Text style={styles.headerSub}>
+          Completa la información
+        </Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll}>
-
-        {/* Info básica */}
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.seccion}>
-          <Text style={styles.seccionTitulo}>📋 Información básica</Text>
-          <Text style={styles.label}>Título</Text>
-          <TextInput style={styles.input} placeholder="Ej: Apartamento céntrico" placeholderTextColor="#94a3b8" value={titulo} onChangeText={setTitulo} />
-          <Text style={styles.label}>Descripción</Text>
-          <TextInput style={[styles.input, styles.inputMultiline]} placeholder="Describe la propiedad..." placeholderTextColor="#94a3b8" value={descripcion} onChangeText={setDescripcion} multiline />
-          <Text style={styles.label}>Tipo de propiedad</Text>
+          <Text style={styles.seccionTitulo}>
+            📋 Información básica
+          </Text>
+
+          <Text style={styles.label}>
+            Título
+          </Text>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Ej: Apartamento céntrico"
+            placeholderTextColor="#94a3b8"
+            value={titulo}
+            onChangeText={setTitulo}
+            editable={!guardando}
+          />
+
+          <Text style={styles.label}>
+            Descripción
+          </Text>
+
+          <TextInput
+            style={[
+              styles.input,
+              styles.inputMultiline,
+            ]}
+            placeholder="Describe la propiedad..."
+            placeholderTextColor="#94a3b8"
+            value={descripcion}
+            onChangeText={setDescripcion}
+            multiline
+            editable={!guardando}
+          />
+
+          <Text style={styles.label}>
+            Tipo de propiedad
+          </Text>
+
           <View style={styles.tiposContainer}>
-            {TIPOS.map(t => (
-              <TouchableOpacity key={t} style={[styles.tipoBtn, tipo === t && styles.tipoActivo]} onPress={() => setTipo(t)}>
-                <Text style={[styles.tipoTexto, tipo === t && styles.tipoTextoActivo]}>{t}</Text>
+            {TIPOS.map(tipoActual => (
+              <TouchableOpacity
+                key={tipoActual}
+                style={[
+                  styles.tipoBtn,
+                  tipo === tipoActual &&
+                    styles.tipoActivo,
+                ]}
+                onPress={() =>
+                  setTipo(tipoActual)
+                }
+                disabled={guardando}
+              >
+                <Text
+                  style={[
+                    styles.tipoTexto,
+                    tipo === tipoActual &&
+                      styles.tipoTextoActivo,
+                  ]}
+                >
+                  {tipoActual}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
-          <Text style={styles.label}>Precio mensual (L.)</Text>
-          <TextInput style={styles.input} placeholder="Ej: 8000" placeholderTextColor="#94a3b8" value={precio} onChangeText={setPrecio} keyboardType="numeric" />
-          <Text style={styles.label}>Dirección</Text>
-          <TextInput style={styles.input} placeholder="Ej: Col. Las Palmas, Casa 12" placeholderTextColor="#94a3b8" value={direccion} onChangeText={setDireccion} />
+
+          <Text style={styles.label}>
+            Precio mensual (L.)
+          </Text>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Ej: 8000"
+            placeholderTextColor="#94a3b8"
+            value={precio}
+            onChangeText={setPrecio}
+            keyboardType="decimal-pad"
+            editable={!guardando}
+          />
+
+          <Text style={styles.label}>
+            Dirección
+          </Text>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Ej: Col. Las Palmas, Casa 12"
+            placeholderTextColor="#94a3b8"
+            value={direccion}
+            onChangeText={setDireccion}
+            editable={!guardando}
+          />
+
+          <Text style={styles.label}>
+            Habitaciones
+          </Text>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Ej: 3"
+            placeholderTextColor="#94a3b8"
+            value={habitaciones}
+            onChangeText={setHabitaciones}
+            keyboardType="number-pad"
+            editable={!guardando}
+          />
+
+          <Text style={styles.label}>
+            Baños
+          </Text>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Ej: 2"
+            placeholderTextColor="#94a3b8"
+            value={banos}
+            onChangeText={setBanos}
+            keyboardType="number-pad"
+            editable={!guardando}
+          />
         </View>
 
-        {/* Foto */}
         <View style={styles.seccion}>
-          <Text style={styles.seccionTitulo}>📷 Foto de la propiedad</Text>
-          <TouchableOpacity style={styles.fotoBtn} onPress={tomarFoto}>
-            <Text style={styles.fotoBtnIcono}>{foto ? '✅' : '📷'}</Text>
-            <Text style={styles.fotoBtnTexto}>{foto ? 'Foto tomada' : 'Tomar foto'}</Text>
-            <Text style={styles.fotoBtnSub}>{foto ? 'Toca para cambiarla' : 'Abre la cámara del dispositivo'}</Text>
+          <Text style={styles.seccionTitulo}>
+            📷 Foto de la propiedad
+          </Text>
+
+          <TouchableOpacity
+            style={styles.fotoBtn}
+            onPress={tomarFoto}
+            disabled={guardando}
+          >
+            <Text style={styles.fotoBtnIcono}>
+              {foto ? '✅' : '📷'}
+            </Text>
+
+            <Text style={styles.fotoBtnTexto}>
+              {foto
+                ? 'Foto seleccionada'
+                : editando &&
+                    propExistente?.foto_ruta
+                  ? 'Cambiar fotografía'
+                  : 'Tomar foto'}
+            </Text>
+
+            <Text style={styles.fotoBtnSub}>
+              Abre la cámara del dispositivo
+            </Text>
           </TouchableOpacity>
+
+          {foto?.uri ? (
+            <Image
+              source={{ uri: foto.uri }}
+              style={{
+                width: '100%',
+                height: 200,
+                borderRadius: 14,
+                marginTop: 14,
+              }}
+              resizeMode="cover"
+            />
+          ) : null}
         </View>
 
-        {/* Ubicación */}
         <View style={styles.seccion}>
-          <Text style={styles.seccionTitulo}>📍 Ubicación GPS</Text>
-          <TouchableOpacity style={styles.mapaPlaceholder} onPress={obtenerUbicacion}>
-            <Text style={styles.mapaIcono}>{ubicacion ? '✅' : '🗺️'}</Text>
-            <Text style={styles.mapaTexto}>{ubicacion ? 'Ubicación guardada' : 'Obtener ubicación actual'}</Text>
-            <Text style={styles.mapaSub}>Toca para usar el GPS</Text>
+          <Text style={styles.seccionTitulo}>
+            📍 Ubicación GPS
+          </Text>
+
+          <TouchableOpacity
+            style={styles.mapaPlaceholder}
+            onPress={obtenerUbicacion}
+            disabled={guardando}
+          >
+            <Text style={styles.mapaIcono}>
+              {ubicacion ? '✅' : '🗺️'}
+            </Text>
+
+            <Text style={styles.mapaTexto}>
+              {ubicacion
+                ? 'Ubicación guardada'
+                : 'Obtener ubicación actual'}
+            </Text>
+
+            <Text style={styles.mapaSub}>
+              Toca para usar el GPS
+            </Text>
           </TouchableOpacity>
-          {ubicacion && (
+
+          {ubicacion ? (
             <Text style={styles.coordTexto}>
-              📍 {ubicacion.latitude.toFixed(5)}, {ubicacion.longitude.toFixed(5)}
+              📍 {ubicacion.latitude.toFixed(5)}
+              , {ubicacion.longitude.toFixed(5)}
+            </Text>
+          ) : null}
+        </View>
+
+        <TouchableOpacity
+          style={styles.btnGuardar}
+          onPress={guardar}
+          disabled={guardando}
+        >
+          {guardando ? (
+            <ActivityIndicator color="#ffffff" />
+          ) : (
+            <Text style={styles.btnGuardarTexto}>
+              💾{' '}
+              {editando
+                ? 'Actualizar propiedad'
+                : 'Guardar propiedad'}
             </Text>
           )}
-        </View>
-
-        <TouchableOpacity style={styles.btnGuardar} onPress={guardar}>
-          <Text style={styles.btnGuardarTexto}>💾 Guardar propiedad</Text>
         </TouchableOpacity>
-
       </ScrollView>
     </View>
   );

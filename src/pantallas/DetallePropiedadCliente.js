@@ -1,104 +1,468 @@
 import React, { useState } from 'react';
+
 import {
-  View, Text, ScrollView, TouchableOpacity,
-  TextInput, Alert, StyleSheet
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Alert,
+  StyleSheet,
+  Image,
+  Platform,
+  ActivityIndicator,
 } from 'react-native';
-import { COLORES, SOMBRA, RADIO } from '../estilos/globales';
 
-export default function DetallePropiedadCliente({ navigation, route }) {
-  const { propiedad } = route.params;
-  const [mensaje, setMensaje] = useState('');
-  const [enviado, setEnviado] = useState(false);
+import {
+  COLORES,
+  SOMBRA,
+  RADIO,
+} from '../estilos/globales';
 
-  const enviarSolicitud = () => {
-    if (!mensaje.trim()) {
-      Alert.alert('Campo requerido', 'Por favor escribe un mensaje al arrendador.');
+import {
+  API_BASE_URL,
+  API_URLS,
+} from '../config/config';
+
+function obtenerEmoji(tipo) {
+  if (tipo === 'Casa') return '🏡';
+  if (tipo === 'Apartamento') return '🏢';
+  if (tipo === 'Local') return '🏪';
+  if (tipo === 'Oficina') return '🏢';
+  if (tipo === 'Bodega') return '🏭';
+  if (tipo === 'Terreno') return '🌳';
+
+  return '🏠';
+}
+
+function obtenerUrlImagen(ruta) {
+  if (!ruta) {
+    return null;
+  }
+
+  if (
+    ruta.startsWith('http://') ||
+    ruta.startsWith('https://')
+  ) {
+    return ruta;
+  }
+
+  const coincidencia = API_BASE_URL.match(
+    /^(https?:\/\/[^/]+)/
+  );
+
+  const servidor = coincidencia
+    ? coincidencia[1]
+    : '';
+
+  if (ruta.startsWith('/')) {
+    return `${servidor}${ruta}`;
+  }
+
+  return `${API_BASE_URL}/${ruta}`;
+}
+
+function mostrarAlerta(
+  titulo,
+  mensaje
+) {
+  if (Platform.OS === 'web') {
+    window.alert(mensaje);
+    return;
+  }
+
+  Alert.alert(titulo, mensaje);
+}
+
+export default function DetallePropiedadCliente({
+  navigation,
+  route,
+}) {
+  const propiedad = route.params?.propiedad;
+  const usuario = route.params?.usuario;
+
+  const [mensaje, setMensaje] =
+    useState('');
+
+  const [enviando, setEnviando] =
+    useState(false);
+
+  const [enviado, setEnviado] =
+    useState(false);
+
+  const urlImagen = obtenerUrlImagen(
+    propiedad?.foto_ruta
+  );
+
+  const arrendador =
+    propiedad?.arrendador || {};
+
+  const enviarSolicitud = async () => {
+    if (!usuario?.id) {
+      mostrarAlerta(
+        'Error',
+        'No se encontró la información del usuario.'
+      );
+
       return;
     }
-    Alert.alert(
-      '✅ Solicitud enviada',
-      'Tu solicitud fue enviada al arrendador. Te notificaremos cuando responda.',
-      [{ text: 'OK', onPress: () => { setEnviado(true); } }]
-    );
+
+    if (!propiedad?.id) {
+      mostrarAlerta(
+        'Error',
+        'No se encontró la propiedad.'
+      );
+
+      return;
+    }
+
+    if (!mensaje.trim()) {
+      mostrarAlerta(
+        'Campo requerido',
+        'Escribe un mensaje para el arrendador.'
+      );
+
+      return;
+    }
+
+    setEnviando(true);
+
+    try {
+      const respuesta = await fetch(
+        API_URLS.CREAR_SOLICITUD,
+        {
+          method: 'POST',
+
+          headers: {
+            'Content-Type': 'application/json',
+          },
+
+          body: JSON.stringify({
+            propiedad_id: propiedad.id,
+            inquilino_id: usuario.id,
+            mensaje: mensaje.trim(),
+          }),
+        }
+      );
+
+      const datos = await respuesta.json();
+
+      if (!respuesta.ok || !datos.exito) {
+        mostrarAlerta(
+          'Error',
+          datos.mensaje ||
+            'No se pudo enviar la solicitud.'
+        );
+
+        return;
+      }
+
+      setEnviado(true);
+      setMensaje('');
+
+      mostrarAlerta(
+        '✅ Solicitud enviada',
+        'Tu solicitud fue enviada correctamente al arrendador.'
+      );
+    } catch (errorPeticion) {
+      console.error(
+        'Error al enviar solicitud:',
+        errorPeticion
+      );
+
+      mostrarAlerta(
+        'Error',
+        'No se pudo conectar con el servidor.'
+      );
+    } finally {
+      setEnviando(false);
+    }
   };
 
+  if (!propiedad) {
+    return (
+      <View style={s.centrado}>
+        <Text style={s.errorTexto}>
+          No se encontró la propiedad.
+        </Text>
+
+        <TouchableOpacity
+          style={s.btnVolverError}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={s.btnVolverErrorTexto}>
+            Volver
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
-    <View style={{ flex: 1, backgroundColor: COLORES.fondo }}>
+    <View style={s.container}>
       <ScrollView>
-        {/* Imagen header */}
         <View style={s.imagenContainer}>
-          <Text style={s.imagenEmoji}>{propiedad.emoji}</Text>
-          <TouchableOpacity style={s.btnVolver} onPress={() => navigation.goBack()}>
-            <Text style={s.btnVolverTexto}>← Volver</Text>
+          {urlImagen ? (
+            <Image
+              source={{ uri: urlImagen }}
+              style={s.imagen}
+              resizeMode="cover"
+            />
+          ) : (
+            <Text style={s.imagenEmoji}>
+              {obtenerEmoji(propiedad.tipo)}
+            </Text>
+          )}
+
+          <TouchableOpacity
+            style={s.btnVolver}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={s.btnVolverTexto}>
+              ← Volver
+            </Text>
           </TouchableOpacity>
+
           <View style={s.tipoBadge}>
-            <Text style={s.tipoBadgeTexto}>{propiedad.tipo}</Text>
+            <Text style={s.tipoBadgeTexto}>
+              {propiedad.tipo}
+            </Text>
           </View>
         </View>
 
         <View style={s.contenido}>
-          {/* Info principal */}
           <View style={s.seccion}>
-            <Text style={s.titulo}>{propiedad.titulo}</Text>
-            <Text style={s.direccion}>📍 {propiedad.direccion}</Text>
-            <Text style={s.precio}>L. {propiedad.precio.toLocaleString()}<Text style={s.precioSub}> /mes</Text></Text>
+            <Text style={s.titulo}>
+              {propiedad.titulo}
+            </Text>
+
+            <Text style={s.direccion}>
+              📍 {propiedad.direccion}
+            </Text>
+
+            <Text style={s.precio}>
+              L.{' '}
+              {Number(
+                propiedad.precio
+              ).toLocaleString()}
+
+              <Text style={s.precioSub}>
+                {' '}
+                /mes
+              </Text>
+            </Text>
+
+            <View style={s.disponibleBadge}>
+              <Text
+                style={s.disponibleBadgeTexto}
+              >
+                ✓ Disponible
+              </Text>
+            </View>
           </View>
 
-          {/* Detalles */}
-          {propiedad.habitaciones > 0 && (
+          {propiedad.descripcion ? (
             <View style={s.seccion}>
-              <Text style={s.seccionTitulo}>📋 Características</Text>
-              <View style={s.caracteristicas}>
-                <View style={s.caracteristicaItem}>
-                  <Text style={s.caracteristicaIcono}>🛏</Text>
-                  <Text style={s.caracteristicaValor}>{propiedad.habitaciones}</Text>
-                  <Text style={s.caracteristicaLabel}>Habitaciones</Text>
-                </View>
-                <View style={s.caracteristicaItem}>
-                  <Text style={s.caracteristicaIcono}>🚿</Text>
-                  <Text style={s.caracteristicaValor}>{propiedad.baños}</Text>
-                  <Text style={s.caracteristicaLabel}>Baños</Text>
-                </View>
-                <View style={s.caracteristicaItem}>
-                  <Text style={s.caracteristicaIcono}>📅</Text>
-                  <Text style={s.caracteristicaValor}>Inmediata</Text>
-                  <Text style={s.caracteristicaLabel}>Disponibilidad</Text>
-                </View>
+              <Text style={s.seccionTitulo}>
+                📄 Descripción
+              </Text>
+
+              <Text style={s.descripcion}>
+                {propiedad.descripcion}
+              </Text>
+            </View>
+          ) : null}
+
+          <View style={s.seccion}>
+            <Text style={s.seccionTitulo}>
+              📋 Características
+            </Text>
+
+            <View style={s.caracteristicas}>
+              <View
+                style={s.caracteristicaItem}
+              >
+                <Text
+                  style={s.caracteristicaIcono}
+                >
+                  🛏
+                </Text>
+
+                <Text
+                  style={s.caracteristicaValor}
+                >
+                  {propiedad.habitaciones || 0}
+                </Text>
+
+                <Text
+                  style={s.caracteristicaLabel}
+                >
+                  Habitaciones
+                </Text>
+              </View>
+
+              <View
+                style={s.caracteristicaItem}
+              >
+                <Text
+                  style={s.caracteristicaIcono}
+                >
+                  🚿
+                </Text>
+
+                <Text
+                  style={s.caracteristicaValor}
+                >
+                  {propiedad.banos || 0}
+                </Text>
+
+                <Text
+                  style={s.caracteristicaLabel}
+                >
+                  Baños
+                </Text>
+              </View>
+
+              <View
+                style={s.caracteristicaItem}
+              >
+                <Text
+                  style={s.caracteristicaIcono}
+                >
+                  📅
+                </Text>
+
+                <Text
+                  style={s.caracteristicaValor}
+                >
+                  Inmediata
+                </Text>
+
+                <Text
+                  style={s.caracteristicaLabel}
+                >
+                  Disponibilidad
+                </Text>
               </View>
             </View>
-          )}
+          </View>
 
-          {/* Arrendador */}
           <View style={s.seccion}>
-            <Text style={s.seccionTitulo}>👤 Arrendador</Text>
+            <Text style={s.seccionTitulo}>
+              👤 Arrendador
+            </Text>
+
             <View style={s.arrendadorCard}>
               <View style={s.arrendadorAvatar}>
-                <Text style={{ fontSize: 24 }}>👤</Text>
+                <Text style={s.avatarTexto}>
+                  👤
+                </Text>
               </View>
-              <View>
-                <Text style={s.arrendadorNombre}>{propiedad.arrendador}</Text>
-                <Text style={s.arrendadorSub}>Propietario verificado ✓</Text>
+
+              <View style={s.arrendadorInfo}>
+                <Text
+                  style={s.arrendadorNombre}
+                >
+                  {arrendador.nombre ||
+                    'Arrendador'}
+                </Text>
+
+                <Text
+                  style={s.arrendadorSub}
+                >
+                  Propietario verificado ✓
+                </Text>
+
+                {arrendador.correo ? (
+                  <Text
+                    style={s.arrendadorContacto}
+                  >
+                    ✉️ {arrendador.correo}
+                  </Text>
+                ) : null}
+
+                {arrendador.telefono ? (
+                  <Text
+                    style={s.arrendadorContacto}
+                  >
+                    📞 {arrendador.telefono}
+                  </Text>
+                ) : null}
               </View>
             </View>
           </View>
 
-          {/* Ubicación */}
           <View style={s.seccion}>
-            <Text style={s.seccionTitulo}>📍 Ubicación</Text>
+            <Text style={s.seccionTitulo}>
+              📍 Ubicación
+            </Text>
+
             <View style={s.mapaPlaceholder}>
-              <Text style={{ fontSize: 40 }}>🗺️</Text>
-              <Text style={s.mapaTexto}>{propiedad.direccion}</Text>
+              <Text style={s.mapaIcono}>
+                🗺️
+              </Text>
+
+              <Text style={s.mapaTexto}>
+                {propiedad.direccion}
+              </Text>
+
+              {propiedad.latitud !== null &&
+              propiedad.longitud !== null ? (
+                <Text style={s.coordenadas}>
+                  {Number(
+                    propiedad.latitud
+                  ).toFixed(5)}
+                  ,{' '}
+                  {Number(
+                    propiedad.longitud
+                  ).toFixed(5)}
+                </Text>
+              ) : (
+                <Text style={s.coordenadas}>
+                  Sin coordenadas registradas
+                </Text>
+              )}
             </View>
           </View>
 
-          {/* Solicitud */}
           <View style={s.seccion}>
-            <Text style={s.seccionTitulo}>📨 Enviar solicitud</Text>
+            <Text style={s.seccionTitulo}>
+              📨 Enviar solicitud
+            </Text>
+
             {enviado ? (
               <View style={s.enviadoContainer}>
-                <Text style={s.enviadoIcono}>✅</Text>
-                <Text style={s.enviadoTexto}>Solicitud enviada</Text>
-                <Text style={s.enviadoSub}>El arrendador revisará tu solicitud pronto</Text>
+                <Text style={s.enviadoIcono}>
+                  ✅
+                </Text>
+
+                <Text style={s.enviadoTitulo}>
+                  Solicitud enviada
+                </Text>
+
+                <Text style={s.enviadoTexto}>
+                  El arrendador revisará tu solicitud.
+                </Text>
+
+                <TouchableOpacity
+                  style={s.btnMisSolicitudes}
+                  onPress={() =>
+                    navigation.navigate(
+                      'MisSolicitudes',
+                      {
+                        usuario,
+                      }
+                    )
+                  }
+                >
+                  <Text
+                    style={
+                      s.btnMisSolicitudesTexto
+                    }
+                  >
+                    Ver mis solicitudes
+                  </Text>
+                </TouchableOpacity>
               </View>
             ) : (
               <>
@@ -110,9 +474,31 @@ export default function DetallePropiedadCliente({ navigation, route }) {
                   onChangeText={setMensaje}
                   multiline
                   numberOfLines={4}
+                  editable={!enviando}
                 />
-                <TouchableOpacity style={s.btnSolicitar} onPress={enviarSolicitud}>
-                  <Text style={s.btnSolicitarTexto}>📨 Enviar solicitud</Text>
+
+                <TouchableOpacity
+                  style={[
+                    s.btnSolicitar,
+                    enviando &&
+                      s.btnDeshabilitado,
+                  ]}
+                  onPress={enviarSolicitud}
+                  disabled={enviando}
+                >
+                  {enviando ? (
+                    <ActivityIndicator
+                      color="#ffffff"
+                    />
+                  ) : (
+                    <Text
+                      style={
+                        s.btnSolicitarTexto
+                      }
+                    >
+                      📨 Enviar solicitud
+                    </Text>
+                  )}
                 </TouchableOpacity>
               </>
             )}
@@ -124,66 +510,247 @@ export default function DetallePropiedadCliente({ navigation, route }) {
 }
 
 const s = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: COLORES.fondo,
+  },
+
+  centrado: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORES.fondo,
+    padding: 24,
+  },
+
+  errorTexto: {
+    color: COLORES.peligro,
+    fontSize: 16,
+    marginBottom: 16,
+  },
+
+  btnVolverError: {
+    backgroundColor: COLORES.primario,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: RADIO.sm,
+  },
+
+  btnVolverErrorTexto: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+  },
+
   imagenContainer: {
-    height: 220,
+    height: 240,
     backgroundColor: COLORES.primarioClaro,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
-  imagenEmoji: { fontSize: 80 },
+
+  imagen: {
+    width: '100%',
+    height: '100%',
+  },
+
+  imagenEmoji: {
+    fontSize: 80,
+  },
+
   btnVolver: {
     position: 'absolute',
-    top: 50,
+    top: 20,
     left: 16,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(0,0,0,0.45)',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
   },
-  btnVolverTexto: { color: '#fff', fontWeight: '600' },
+
+  btnVolverTexto: {
+    color: '#ffffff',
+    fontWeight: '600',
+  },
+
   tipoBadge: {
     position: 'absolute',
-    top: 50,
+    top: 20,
     right: 16,
     backgroundColor: COLORES.primario,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
   },
-  tipoBadgeTexto: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
-  contenido: { padding: 20, gap: 16 },
-  seccion: { backgroundColor: COLORES.fondoTarjeta, borderRadius: RADIO.lg, padding: 18, ...SOMBRA },
-  titulo: { fontSize: 22, fontWeight: 'bold', color: COLORES.textoPrincipal },
-  direccion: { fontSize: 14, color: COLORES.textoSecundario, marginTop: 6 },
-  precio: { fontSize: 26, fontWeight: 'bold', color: COLORES.primario, marginTop: 10 },
-  precioSub: { fontSize: 15, fontWeight: 'normal', color: COLORES.textoSecundario },
-  seccionTitulo: { fontSize: 15, fontWeight: 'bold', color: COLORES.primario, marginBottom: 14 },
-  caracteristicas: { flexDirection: 'row', justifyContent: 'space-around' },
-  caracteristicaItem: { alignItems: 'center' },
-  caracteristicaIcono: { fontSize: 28, marginBottom: 6 },
-  caracteristicaValor: { fontSize: 16, fontWeight: 'bold', color: COLORES.textoPrincipal },
-  caracteristicaLabel: { fontSize: 12, color: COLORES.textoSecundario, marginTop: 2 },
-  arrendadorCard: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+
+  tipoBadgeTexto: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+
+  contenido: {
+    padding: 20,
+    gap: 16,
+  },
+
+  seccion: {
+    backgroundColor: COLORES.fondoTarjeta,
+    borderRadius: RADIO.lg,
+    padding: 18,
+    ...SOMBRA,
+  },
+
+  titulo: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: COLORES.textoPrincipal,
+  },
+
+  direccion: {
+    fontSize: 14,
+    color: COLORES.textoSecundario,
+    marginTop: 6,
+  },
+
+  precio: {
+    fontSize: 26,
+    fontWeight: 'bold',
+    color: COLORES.primario,
+    marginTop: 10,
+  },
+
+  precioSub: {
+    fontSize: 15,
+    fontWeight: 'normal',
+    color: COLORES.textoSecundario,
+  },
+
+  disponibleBadge: {
+    backgroundColor: COLORES.exitoClaro,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    marginTop: 10,
+  },
+
+  disponibleBadgeTexto: {
+    color: COLORES.exito,
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+
+  seccionTitulo: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: COLORES.primario,
+    marginBottom: 14,
+  },
+
+  descripcion: {
+    color: COLORES.textoSecundario,
+    fontSize: 14,
+    lineHeight: 21,
+  },
+
+  caracteristicas: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+
+  caracteristicaItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+
+  caracteristicaIcono: {
+    fontSize: 28,
+    marginBottom: 6,
+  },
+
+  caracteristicaValor: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORES.textoPrincipal,
+  },
+
+  caracteristicaLabel: {
+    fontSize: 11,
+    color: COLORES.textoSecundario,
+    marginTop: 2,
+    textAlign: 'center',
+  },
+
+  arrendadorCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+
   arrendadorAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: COLORES.primarioClaro,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  arrendadorNombre: { fontSize: 16, fontWeight: 'bold', color: COLORES.textoPrincipal },
-  arrendadorSub: { fontSize: 13, color: COLORES.exito, marginTop: 2 },
+
+  avatarTexto: {
+    fontSize: 24,
+  },
+
+  arrendadorInfo: {
+    flex: 1,
+  },
+
+  arrendadorNombre: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORES.textoPrincipal,
+  },
+
+  arrendadorSub: {
+    fontSize: 13,
+    color: COLORES.exito,
+    marginTop: 2,
+  },
+
+  arrendadorContacto: {
+    fontSize: 12,
+    color: COLORES.textoSecundario,
+    marginTop: 4,
+  },
+
   mapaPlaceholder: {
     backgroundColor: COLORES.fondo,
     borderRadius: RADIO.md,
-    height: 120,
+    minHeight: 130,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORES.borde,
+    padding: 14,
   },
-  mapaTexto: { color: COLORES.textoSecundario, fontSize: 13, marginTop: 6, textAlign: 'center' },
+
+  mapaIcono: {
+    fontSize: 40,
+  },
+
+  mapaTexto: {
+    color: COLORES.textoSecundario,
+    fontSize: 13,
+    marginTop: 6,
+    textAlign: 'center',
+  },
+
+  coordenadas: {
+    color: COLORES.textoClaro,
+    fontSize: 12,
+    marginTop: 5,
+  },
+
   mensajeInput: {
     backgroundColor: COLORES.fondo,
     borderWidth: 1.5,
@@ -196,6 +763,7 @@ const s = StyleSheet.create({
     textAlignVertical: 'top',
     marginBottom: 14,
   },
+
   btnSolicitar: {
     backgroundColor: COLORES.primario,
     padding: 16,
@@ -203,9 +771,50 @@ const s = StyleSheet.create({
     alignItems: 'center',
     ...SOMBRA,
   },
-  btnSolicitarTexto: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  enviadoContainer: { alignItems: 'center', paddingVertical: 20 },
-  enviadoIcono: { fontSize: 48, marginBottom: 10 },
-  enviadoTexto: { fontSize: 18, fontWeight: 'bold', color: COLORES.exito },
-  enviadoSub: { fontSize: 14, color: COLORES.textoSecundario, marginTop: 6, textAlign: 'center' },
+
+  btnDeshabilitado: {
+    opacity: 0.65,
+  },
+
+  btnSolicitarTexto: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+
+  enviadoContainer: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+
+  enviadoIcono: {
+    fontSize: 48,
+  },
+
+  enviadoTitulo: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORES.exito,
+    marginTop: 10,
+  },
+
+  enviadoTexto: {
+    fontSize: 14,
+    color: COLORES.textoSecundario,
+    marginTop: 6,
+    textAlign: 'center',
+  },
+
+  btnMisSolicitudes: {
+    backgroundColor: COLORES.primarioClaro,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    borderRadius: RADIO.sm,
+    marginTop: 16,
+  },
+
+  btnMisSolicitudesTexto: {
+    color: COLORES.primario,
+    fontWeight: 'bold',
+  },
 });

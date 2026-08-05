@@ -1,106 +1,1323 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { COLORES, SOMBRA, RADIO } from '../estilos/globales';
+import React, {
+  useCallback,
+  useState,
+} from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  Platform,
+  Image,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import { API_BASE_URL, API_URLS } from '../config/config';
+import {
+  COLORES,
+  RADIO,
+} from '../estilos/globales';
 
-const PAGOS_MOCK = [
-  { id: 1, inquilino: 'Ana García', propiedad: 'Casa Familiar', monto: 8000, vencimiento: '2025-01-31', estado: 'pendiente' },
-  { id: 2, inquilino: 'Pedro Soto', propiedad: 'Apartamento Centro', monto: 5500, vencimiento: '2025-01-31', estado: 'pagado', fechaPago: '2025-01-15' },
-  { id: 3, inquilino: 'Ana García', propiedad: 'Casa Familiar', monto: 8000, vencimiento: '2024-12-31', estado: 'pagado', fechaPago: '2024-12-20' },
-  { id: 4, inquilino: 'Pedro Soto', propiedad: 'Apartamento Centro', monto: 5500, vencimiento: '2024-12-31', estado: 'vencido' },
-];
+export default function PagosAdmin({
+  route,
+  navigation,
+}) {
+  const usuario = route?.params?.usuario;
 
-export default function PagosAdmin() {
-  const [pagos, setPagos] = useState(PAGOS_MOCK);
-  const [filtro, setFiltro] = useState('todos');
+  const [pagos, setPagos] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState('');
+  const [procesandoId, setProcesandoId] = useState(null);
 
-  const marcarPagado = (id) => {
-    Alert.alert('Confirmar', '¿Marcar este pago como recibido?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: '✅ Confirmar', onPress: () => setPagos(p => p.map(x => x.id === id ? { ...x, estado: 'pagado', fechaPago: new Date().toISOString().split('T')[0] } : x)) },
-    ]);
+  const obtenerArrendadorId = useCallback(() => {
+    return Number(
+      usuario?.id ||
+        usuario?.usuario_id ||
+        0
+    );
+  }, [usuario]);
+
+  const obtenerPagoId = (pago) => {
+    return Number(
+      pago?.id ||
+        pago?.pago_id ||
+        0
+    );
   };
 
-  const getBadge = (estado) => {
-    if (estado === 'pagado') return { bg: COLORES.exito, texto: '✓ Pagado' };
-    if (estado === 'vencido') return { bg: COLORES.peligro, texto: '⚠ Vencido' };
-    return { bg: COLORES.acento, texto: '⏳ Pendiente' };
+  const cargarPagos = useCallback(
+    async (mostrarCarga = true) => {
+      const arrendadorId =
+        obtenerArrendadorId();
+
+      if (!arrendadorId) {
+        setPagos([]);
+        setError(
+          'No se pudo identificar al arrendador.'
+        );
+        setCargando(false);
+        return;
+      }
+
+      try {
+        if (mostrarCarga) {
+          setCargando(true);
+        }
+
+        setError('');
+
+        const respuesta = await fetch(
+          API_URLS.LISTAR_PAGOS_ARRENDADOR,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+            },
+            body: JSON.stringify({
+              arrendador_id: arrendadorId,
+            }),
+          }
+        );
+
+        const textoRespuesta =
+          await respuesta.text();
+
+        let datos;
+
+        try {
+          datos = JSON.parse(textoRespuesta);
+        } catch (errorJson) {
+          console.log(
+            'Respuesta de pagos:',
+            textoRespuesta
+          );
+
+          throw new Error(
+            'El servidor no devolvió una respuesta válida.'
+          );
+        }
+
+        if (
+          !respuesta.ok ||
+          datos.exito === false ||
+          datos.success === false
+        ) {
+          throw new Error(
+            datos.mensaje ||
+              datos.message ||
+              'No se pudieron cargar los pagos.'
+          );
+        }
+
+        let lista = [];
+
+        if (Array.isArray(datos)) {
+          lista = datos;
+        } else if (Array.isArray(datos.pagos)) {
+          lista = datos.pagos;
+        } else if (Array.isArray(datos.data)) {
+          lista = datos.data;
+        }
+
+        setPagos(lista);
+      } catch (errorPeticion) {
+        console.error(
+          'Error al cargar pagos:',
+          errorPeticion
+        );
+
+        setPagos([]);
+
+        setError(
+          errorPeticion.message ||
+            'Ocurrió un error al cargar los pagos.'
+        );
+      } finally {
+        setCargando(false);
+      }
+    },
+    [obtenerArrendadorId]
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      cargarPagos();
+    }, [cargarPagos])
+  );
+
+  const mostrarMensaje = (
+    titulo,
+    mensaje
+  ) => {
+    if (
+      Platform.OS === 'web' &&
+      typeof window !== 'undefined'
+    ) {
+      window.alert(mensaje);
+      return;
+    }
+
+    Alert.alert(titulo, mensaje);
   };
 
-  const filtrados = filtro === 'todos' ? pagos : pagos.filter(p => p.estado === filtro);
+  const ejecutarAnulacion = async (pago) => {
+    const pagoId = obtenerPagoId(pago);
+    const arrendadorId =
+      obtenerArrendadorId();
+
+    if (!pagoId || !arrendadorId) {
+      mostrarMensaje(
+        'Error',
+        'No se pudo identificar el pago o el arrendador.'
+      );
+
+      return;
+    }
+
+    try {
+      setProcesandoId(pagoId);
+
+      const respuesta = await fetch(
+        API_URLS.ANULAR_PAGO,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({
+            pago_id: pagoId,
+            arrendador_id: arrendadorId,
+          }),
+        }
+      );
+
+      const textoRespuesta =
+        await respuesta.text();
+
+      let datos;
+
+      try {
+        datos = JSON.parse(textoRespuesta);
+      } catch (errorJson) {
+        console.log(
+          'Respuesta al anular pago:',
+          textoRespuesta
+        );
+
+        throw new Error(
+          'El servidor no devolvió una respuesta válida.'
+        );
+      }
+
+      const fueExitoso =
+        datos.exito === true ||
+        datos.success === true;
+
+      if (!respuesta.ok || !fueExitoso) {
+        throw new Error(
+          datos.mensaje ||
+            datos.message ||
+            'No se pudo anular el pago.'
+        );
+      }
+
+      await cargarPagos(false);
+
+      mostrarMensaje(
+        'Pago anulado',
+        'El pago se anuló correctamente.'
+      );
+    } catch (errorAnulacion) {
+      console.error(
+        'Error al anular pago:',
+        errorAnulacion
+      );
+
+      mostrarMensaje(
+        'Error',
+        errorAnulacion.message ||
+          'No se pudo anular el pago.'
+      );
+    } finally {
+      setProcesandoId(null);
+    }
+  };
+
+  const confirmarAnulacion = (pago) => {
+    const mensaje =
+      '¿Deseas anular este pago? El registro permanecerá guardado como anulado.';
+
+    if (
+      Platform.OS === 'web' &&
+      typeof window !== 'undefined'
+    ) {
+      const confirmado =
+        window.confirm(mensaje);
+
+      if (confirmado) {
+        ejecutarAnulacion(pago);
+      }
+
+      return;
+    }
+
+    Alert.alert(
+      'Anular pago',
+      mensaje,
+      [
+        {
+          text: 'No',
+          style: 'cancel',
+        },
+        {
+          text: 'Anular',
+          style: 'destructive',
+          onPress: () =>
+            ejecutarAnulacion(pago),
+        },
+      ]
+    );
+  };
+
+  const abrirRegistrarPago = () => {
+    navigation.navigate('RegistrarPago', {
+      usuario,
+    });
+  };
+
+  const obtenerEstado = (pago) => {
+    return String(
+      pago?.estado ||
+        pago?.pago_estado ||
+        'pagado'
+    ).toLowerCase();
+  };
+
+  const obtenerPeriodo = (pago) => {
+    return (
+      pago?.periodo ||
+      pago?.pago_periodo ||
+      ''
+    );
+  };
+
+  const obtenerFechaPago = (pago) => {
+    return (
+      pago?.fecha_pago ||
+      pago?.pago_fecha ||
+      ''
+    );
+  };
+
+  const obtenerMonto = (pago) => {
+    return Number(
+      pago?.monto ||
+        pago?.pago_monto ||
+        0
+    );
+  };
+
+  const obtenerMetodo = (pago) => {
+    return String(
+      pago?.metodo ||
+        pago?.pago_metodo ||
+        'otro'
+    ).toLowerCase();
+  };
+
+  const obtenerReferencia = (pago) => {
+    return (
+      pago?.referencia ||
+      pago?.pago_referencia ||
+      ''
+    );
+  };
+
+  const obtenerObservacion = (pago) => {
+    return (
+      pago?.observacion ||
+      pago?.pago_observacion ||
+      ''
+    );
+  };
+
+  const obtenerTituloPropiedad = (pago) => {
+    return (
+      pago?.propiedad?.titulo ||
+      pago?.propiedad?.propiedad_titulo ||
+      pago?.propiedad_titulo ||
+      'Propiedad'
+    );
+  };
+
+  const obtenerDireccionPropiedad = (
+    pago
+  ) => {
+    return (
+      pago?.propiedad?.direccion ||
+      pago?.propiedad?.propiedad_direccion ||
+      pago?.propiedad_direccion ||
+      ''
+    );
+  };
+
+  const obtenerNombreInquilino = (pago) => {
+    return (
+      pago?.inquilino?.nombre ||
+      pago?.inquilino
+        ?.usuario_nombrecomp ||
+      pago?.inquilino_nombre ||
+      'Inquilino'
+    );
+  };
+
+  const obtenerImagen = (pago) => {
+    const ruta =
+      pago?.propiedad?.imagen ||
+      pago?.propiedad?.foto ||
+      pago?.propiedad?.imagen_ruta ||
+      pago?.propiedad?.propiedad_img_ruta ||
+      pago?.propiedad_imagen ||
+      '';
+
+    if (!ruta) {
+      return null;
+    }
+
+    if (
+      String(ruta).startsWith('http://') ||
+      String(ruta).startsWith('https://')
+    ) {
+      return String(ruta);
+    }
+
+    const rutaLimpia =
+      String(ruta).replace(/^\/+/, '');
+
+    return `${API_BASE_URL}/${rutaLimpia}`;
+  };
+
+  const mostrarDinero = (cantidad) => {
+    return Number(
+      cantidad || 0
+    ).toLocaleString('es-HN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  const mostrarFecha = (fecha) => {
+    if (!fecha) {
+      return 'No disponible';
+    }
+
+    const fechaObjeto = new Date(
+      `${String(fecha).substring(0, 10)}T00:00:00`
+    );
+
+    if (
+      Number.isNaN(fechaObjeto.getTime())
+    ) {
+      return String(fecha);
+    }
+
+    return fechaObjeto.toLocaleDateString(
+      'es-HN',
+      {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      }
+    );
+  };
+
+  const mostrarPeriodo = (periodo) => {
+    if (
+      !periodo ||
+      !/^\d{4}-\d{2}$/.test(periodo)
+    ) {
+      return periodo || 'No disponible';
+    }
+
+    const partes = periodo.split('-');
+    const anio = Number(partes[0]);
+    const mes = Number(partes[1]);
+
+    const fecha = new Date(
+      anio,
+      mes - 1,
+      1
+    );
+
+    const nombreMes =
+      fecha.toLocaleDateString('es-HN', {
+        month: 'long',
+      });
+
+    return `${
+      nombreMes.charAt(0).toUpperCase() +
+      nombreMes.slice(1)
+    } ${anio}`;
+  };
+
+  const obtenerMetodoVisual = (metodo) => {
+    if (metodo === 'efectivo') {
+      return {
+        etiqueta: 'Efectivo',
+        icono: 'cash-outline',
+      };
+    }
+
+    if (metodo === 'transferencia') {
+      return {
+        etiqueta: 'Transferencia',
+        icono: 'swap-horizontal-outline',
+      };
+    }
+
+    if (metodo === 'deposito') {
+      return {
+        etiqueta: 'Depósito',
+        icono: 'business-outline',
+      };
+    }
+
+    return {
+      etiqueta: 'Otro',
+      icono: 'wallet-outline',
+    };
+  };
+
+  const pagosValidos = pagos.filter(
+    (pago) => obtenerEstado(pago) === 'pagado'
+  );
+
+  const totalRecibido = pagosValidos.reduce(
+    (total, pago) =>
+      total + obtenerMonto(pago),
+    0
+  );
+
+  if (cargando) {
+    return (
+      <View style={styles.centro}>
+        <ActivityIndicator
+          size="large"
+          color={COLORES.primario}
+        />
+
+        <Text style={styles.textoCargando}>
+          Cargando pagos...
+        </Text>
+      </View>
+    );
+  }
 
   return (
-    <View style={{ flex: 1, backgroundColor: COLORES.fondo }}>
-      <View style={s.header}>
-        <Text style={s.headerTitulo}>💰 Pagos</Text>
-        <Text style={s.headerSub}>Total pendiente: L. {pagos.filter(p => p.estado === 'pendiente').reduce((a, b) => a + b.monto, 0).toLocaleString()}</Text>
-      </View>
+    <View style={styles.pantalla}>
+      <View style={styles.resumen}>
+        <View style={styles.resumenFila}>
+          <View style={styles.resumenIcono}>
+            <Ionicons
+              name="cash-outline"
+              size={30}
+              color={COLORES.exito}
+            />
+          </View>
 
-      <View style={s.filtros}>
-        {['todos', 'pendiente', 'pagado', 'vencido'].map(f => (
-          <TouchableOpacity key={f} style={[s.filtroBtn, filtro === f && s.filtroActivo]} onPress={() => setFiltro(f)}>
-            <Text style={[s.filtroTexto, filtro === f && s.filtroTextoActivo]}>{f}</Text>
+          <View style={styles.resumenInformacion}>
+            <Text style={styles.resumenEtiqueta}>
+              Total recibido
+            </Text>
+
+            <Text style={styles.resumenMonto}>
+              L {mostrarDinero(totalRecibido)}
+            </Text>
+
+            <Text style={styles.resumenCantidad}>
+              {pagosValidos.length}{' '}
+              {pagosValidos.length === 1
+                ? 'pago registrado'
+                : 'pagos registrados'}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.botonRecargar}
+            onPress={() => cargarPagos()}
+          >
+            <Ionicons
+              name="refresh"
+              size={22}
+              color={COLORES.primario}
+            />
           </TouchableOpacity>
-        ))}
+        </View>
+
+        <TouchableOpacity
+          style={styles.botonNuevoPago}
+          onPress={abrirRegistrarPago}
+        >
+          <Ionicons
+            name="add-circle-outline"
+            size={22}
+            color="#ffffff"
+          />
+
+          <Text style={styles.textoNuevoPago}>
+            Registrar pago
+          </Text>
+        </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
-        {filtrados.map(p => {
-          const badge = getBadge(p.estado);
-          return (
-            <View key={p.id} style={s.tarjeta}>
-              <View style={s.tarjetaTop}>
-                <View>
-                  <Text style={s.inquilino}>👤 {p.inquilino}</Text>
-                  <Text style={s.propiedad}>🏠 {p.propiedad}</Text>
+      {error !== '' ? (
+        <View style={styles.estadoPantalla}>
+          <Ionicons
+            name="alert-circle-outline"
+            size={55}
+            color={COLORES.peligro}
+          />
+
+          <Text style={styles.errorTexto}>
+            {error}
+          </Text>
+
+          <TouchableOpacity
+            style={styles.botonReintentar}
+            onPress={() => cargarPagos()}
+          >
+            <Text
+              style={styles.textoReintentar}
+            >
+              Volver a intentar
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : pagos.length === 0 ? (
+        <View style={styles.estadoPantalla}>
+          <Ionicons
+            name="receipt-outline"
+            size={70}
+            color={COLORES.textoClaro}
+          />
+
+          <Text style={styles.vacioTitulo}>
+            No hay pagos registrados
+          </Text>
+
+          <Text style={styles.vacioTexto}>
+            Presiona Registrar pago para agregar
+            el primer pago de un contrato.
+          </Text>
+
+          <TouchableOpacity
+            style={styles.botonReintentar}
+            onPress={abrirRegistrarPago}
+          >
+            <Ionicons
+              name="add-outline"
+              size={20}
+              color="#ffffff"
+            />
+
+            <Text
+              style={styles.textoReintentar}
+            >
+              Registrar pago
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={styles.lista}
+          showsVerticalScrollIndicator={false}
+        >
+          {pagos.map((pago, indice) => {
+            const pagoId = obtenerPagoId(pago);
+            const estado = obtenerEstado(pago);
+            const imagen = obtenerImagen(pago);
+            const metodo = obtenerMetodoVisual(
+              obtenerMetodo(pago)
+            );
+
+            const estaProcesando =
+              procesandoId === pagoId;
+
+            const estaAnulado =
+              estado === 'anulado';
+
+            return (
+              <View
+                key={
+                  pagoId ||
+                  `pago-${indice}`
+                }
+                style={[
+                  styles.tarjeta,
+                  estaAnulado &&
+                    styles.tarjetaAnulada,
+                ]}
+              >
+                <View
+                  style={
+                    styles.encabezadoTarjeta
+                  }
+                >
+                  {imagen ? (
+                    <Image
+                      source={{ uri: imagen }}
+                      style={
+                        styles.imagenPropiedad
+                      }
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View
+                      style={styles.sinImagen}
+                    >
+                      <Ionicons
+                        name="home-outline"
+                        size={25}
+                        color={
+                          COLORES.textoClaro
+                        }
+                      />
+                    </View>
+                  )}
+
+                  <View
+                    style={
+                      styles.tituloContenedor
+                    }
+                  >
+                    <Text
+                      style={
+                        styles.tituloPropiedad
+                      }
+                    >
+                      {obtenerTituloPropiedad(
+                        pago
+                      )}
+                    </Text>
+
+                    <Text
+                      style={styles.inquilino}
+                    >
+                      {obtenerNombreInquilino(
+                        pago
+                      )}
+                    </Text>
+                  </View>
+
+                  <View
+                    style={[
+                      styles.estado,
+                      estaAnulado
+                        ? styles.estadoAnulado
+                        : styles.estadoPagado,
+                    ]}
+                  >
+                    <Ionicons
+                      name={
+                        estaAnulado
+                          ? 'close-circle'
+                          : 'checkmark-circle'
+                      }
+                      size={15}
+                      color={
+                        estaAnulado
+                          ? COLORES.peligro
+                          : COLORES.exito
+                      }
+                    />
+
+                    <Text
+                      style={[
+                        styles.estadoTexto,
+                        {
+                          color: estaAnulado
+                            ? COLORES.peligro
+                            : COLORES.exito,
+                        },
+                      ]}
+                    >
+                      {estado.toUpperCase()}
+                    </Text>
+                  </View>
                 </View>
-                <View style={[s.badge, { backgroundColor: badge.bg }]}>
-                  <Text style={s.badgeTexto}>{badge.texto}</Text>
+
+                {obtenerDireccionPropiedad(
+                  pago
+                ) !== '' && (
+                  <View
+                    style={
+                      styles.filaInformacion
+                    }
+                  >
+                    <Ionicons
+                      name="location-outline"
+                      size={17}
+                      color={
+                        COLORES.textoSecundario
+                      }
+                    />
+
+                    <Text
+                      style={
+                        styles.textoInformacion
+                      }
+                    >
+                      {obtenerDireccionPropiedad(
+                        pago
+                      )}
+                    </Text>
+                  </View>
+                )}
+
+                <View style={styles.pagoPrincipal}>
+                  <View>
+                    <Text
+                      style={styles.periodoEtiqueta}
+                    >
+                      Periodo
+                    </Text>
+
+                    <Text
+                      style={styles.periodoTexto}
+                    >
+                      {mostrarPeriodo(
+                        obtenerPeriodo(pago)
+                      )}
+                    </Text>
+                  </View>
+
+                  <Text
+                    style={[
+                      styles.monto,
+                      estaAnulado &&
+                        styles.montoAnulado,
+                    ]}
+                  >
+                    L{' '}
+                    {mostrarDinero(
+                      obtenerMonto(pago)
+                    )}
+                  </Text>
                 </View>
+
+                <View style={styles.detalles}>
+                  <View style={styles.detalleItem}>
+                    <Ionicons
+                      name="calendar-outline"
+                      size={18}
+                      color={COLORES.primario}
+                    />
+
+                    <View>
+                      <Text
+                        style={
+                          styles.detalleEtiqueta
+                        }
+                      >
+                        Fecha
+                      </Text>
+
+                      <Text
+                        style={styles.detalleValor}
+                      >
+                        {mostrarFecha(
+                          obtenerFechaPago(pago)
+                        )}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.detalleItem}>
+                    <Ionicons
+                      name={metodo.icono}
+                      size={18}
+                      color={COLORES.primario}
+                    />
+
+                    <View>
+                      <Text
+                        style={
+                          styles.detalleEtiqueta
+                        }
+                      >
+                        Método
+                      </Text>
+
+                      <Text
+                        style={styles.detalleValor}
+                      >
+                        {metodo.etiqueta}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {obtenerReferencia(pago) !==
+                  '' && (
+                  <View
+                    style={
+                      styles.informacionAdicional
+                    }
+                  >
+                    <Text
+                      style={
+                        styles.informacionEtiqueta
+                      }
+                    >
+                      Referencia:
+                    </Text>
+
+                    <Text
+                      style={
+                        styles.informacionValor
+                      }
+                    >
+                      {obtenerReferencia(pago)}
+                    </Text>
+                  </View>
+                )}
+
+                {obtenerObservacion(pago) !==
+                  '' && (
+                  <View
+                    style={
+                      styles.observacionContenedor
+                    }
+                  >
+                    <Text
+                      style={
+                        styles.observacionTitulo
+                      }
+                    >
+                      Observación
+                    </Text>
+
+                    <Text
+                      style={
+                        styles.observacionTexto
+                      }
+                    >
+                      {obtenerObservacion(pago)}
+                    </Text>
+                  </View>
+                )}
+
+                {!estaAnulado && (
+                  <TouchableOpacity
+                    style={[
+                      styles.botonAnular,
+                      estaProcesando &&
+                        styles.botonDeshabilitado,
+                    ]}
+                    onPress={() =>
+                      confirmarAnulacion(pago)
+                    }
+                    disabled={estaProcesando}
+                  >
+                    {estaProcesando ? (
+                      <ActivityIndicator
+                        size="small"
+                        color={COLORES.peligro}
+                      />
+                    ) : (
+                      <>
+                        <Ionicons
+                          name="close-circle-outline"
+                          size={19}
+                          color={COLORES.peligro}
+                        />
+
+                        <Text
+                          style={
+                            styles.textoAnular
+                          }
+                        >
+                          Anular pago
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
               </View>
-              <View style={s.montoRow}>
-                <Text style={s.monto}>L. {p.monto.toLocaleString()}</Text>
-                <Text style={s.vencimiento}>Vence: {p.vencimiento}</Text>
-              </View>
-              {p.fechaPago && <Text style={s.fechaPago}>✓ Pagado el {p.fechaPago}</Text>}
-              {p.estado === 'pendiente' && (
-                <TouchableOpacity style={s.btnMarcar} onPress={() => marcarPagado(p.id)}>
-                  <Text style={s.btnMarcarTexto}>✅ Marcar como pagado</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          );
-        })}
-      </ScrollView>
+            );
+          })}
+        </ScrollView>
+      )}
     </View>
   );
 }
 
-const s = StyleSheet.create({
-  header: {
-    backgroundColor: COLORES.primario,
-    paddingTop: 55,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+const styles = StyleSheet.create({
+  pantalla: {
+    flex: 1,
+    backgroundColor: COLORES.fondo,
   },
-  headerTitulo: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
-  headerSub: { color: COLORES.primarioClaro, fontSize: 13, marginTop: 4 },
-  filtros: { flexDirection: 'row', padding: 16, gap: 8 },
-  filtroBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: COLORES.fondoTarjeta, borderWidth: 1, borderColor: COLORES.borde },
-  filtroActivo: { backgroundColor: COLORES.primario, borderColor: COLORES.primario },
-  filtroTexto: { fontSize: 13, color: COLORES.textoSecundario, fontWeight: '600', textTransform: 'capitalize' },
-  filtroTextoActivo: { color: '#fff' },
-  tarjeta: { backgroundColor: COLORES.fondoTarjeta, borderRadius: RADIO.lg, padding: 18, ...SOMBRA },
-  tarjetaTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
-  inquilino: { fontSize: 15, fontWeight: 'bold', color: COLORES.textoPrincipal },
-  propiedad: { fontSize: 13, color: COLORES.textoSecundario, marginTop: 2 },
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  badgeTexto: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
-  montoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  monto: { fontSize: 22, fontWeight: 'bold', color: COLORES.primario },
-  vencimiento: { fontSize: 13, color: COLORES.textoSecundario },
-  fechaPago: { fontSize: 13, color: COLORES.exito, marginTop: 6, fontWeight: '600' },
-  btnMarcar: { backgroundColor: COLORES.exitoClaro, padding: 12, borderRadius: RADIO.sm, alignItems: 'center', marginTop: 12 },
-  btnMarcarTexto: { color: COLORES.exito, fontWeight: 'bold', fontSize: 14 },
+
+  centro: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORES.fondo,
+  },
+
+  textoCargando: {
+    marginTop: 12,
+    fontSize: 15,
+    color: COLORES.textoSecundario,
+  },
+
+  resumen: {
+    backgroundColor: COLORES.fondoTarjeta,
+    margin: 16,
+    marginBottom: 0,
+    padding: 17,
+    borderRadius: RADIO.lg,
+    borderWidth: 1,
+    borderColor: COLORES.borde,
+    boxShadow:
+      '0px 2px 8px rgba(15, 23, 42, 0.08)',
+    elevation: 2,
+  },
+
+  resumenFila: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  resumenIcono: {
+    width: 57,
+    height: 57,
+    borderRadius: 16,
+    backgroundColor: COLORES.exitoClaro,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  resumenInformacion: {
+    flex: 1,
+    marginLeft: 13,
+  },
+
+  resumenEtiqueta: {
+    fontSize: 13,
+    color: COLORES.textoSecundario,
+  },
+
+  resumenMonto: {
+    marginTop: 2,
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: COLORES.exito,
+  },
+
+  resumenCantidad: {
+    marginTop: 2,
+    fontSize: 12,
+    color: COLORES.textoClaro,
+  },
+
+  botonRecargar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#f0fdfa',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  botonNuevoPago: {
+    minHeight: 48,
+    marginTop: 15,
+    borderRadius: RADIO.sm,
+    backgroundColor: COLORES.primario,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+
+  textoNuevoPago: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+
+  lista: {
+    padding: 16,
+    paddingBottom: 35,
+  },
+
+  tarjeta: {
+    backgroundColor: COLORES.fondoTarjeta,
+    borderRadius: RADIO.lg,
+    padding: 17,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORES.borde,
+    boxShadow:
+      '0px 2px 8px rgba(15, 23, 42, 0.08)',
+    elevation: 2,
+  },
+
+  tarjetaAnulada: {
+    opacity: 0.72,
+    backgroundColor: '#fafafa',
+  },
+
+  encabezadoTarjeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  imagenPropiedad: {
+    width: 52,
+    height: 52,
+    borderRadius: 13,
+    backgroundColor: COLORES.borde,
+  },
+
+  sinImagen: {
+    width: 52,
+    height: 52,
+    borderRadius: 13,
+    backgroundColor: '#f1f5f9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  tituloContenedor: {
+    flex: 1,
+    marginLeft: 11,
+  },
+
+  tituloPropiedad: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORES.textoPrincipal,
+  },
+
+  inquilino: {
+    marginTop: 3,
+    fontSize: 13,
+    color: COLORES.textoSecundario,
+  },
+
+  estado: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+
+  estadoPagado: {
+    backgroundColor: COLORES.exitoClaro,
+  },
+
+  estadoAnulado: {
+    backgroundColor: COLORES.peligroClaro,
+  },
+
+  estadoTexto: {
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+
+  filaInformacion: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    marginTop: 11,
+  },
+
+  textoInformacion: {
+    flex: 1,
+    fontSize: 13,
+    color: COLORES.textoSecundario,
+  },
+
+  pagoPrincipal: {
+    marginTop: 15,
+    padding: 13,
+    borderRadius: RADIO.sm,
+    backgroundColor: '#f0fdf4',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+  periodoEtiqueta: {
+    fontSize: 11,
+    color: COLORES.textoSecundario,
+  },
+
+  periodoTexto: {
+    marginTop: 3,
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: COLORES.textoPrincipal,
+  },
+
+  monto: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: COLORES.exito,
+  },
+
+  montoAnulado: {
+    color: COLORES.textoClaro,
+    textDecorationLine: 'line-through',
+  },
+
+  detalles: {
+    marginTop: 13,
+    flexDirection: 'row',
+    gap: 10,
+  },
+
+  detalleItem: {
+    flex: 1,
+    minHeight: 55,
+    padding: 10,
+    borderRadius: RADIO.sm,
+    backgroundColor: COLORES.fondo,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+
+  detalleEtiqueta: {
+    fontSize: 10,
+    color: COLORES.textoClaro,
+  },
+
+  detalleValor: {
+    marginTop: 2,
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORES.textoPrincipal,
+  },
+
+  informacionAdicional: {
+    flexDirection: 'row',
+    marginTop: 12,
+    gap: 5,
+  },
+
+  informacionEtiqueta: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: COLORES.textoPrincipal,
+  },
+
+  informacionValor: {
+    flex: 1,
+    fontSize: 13,
+    color: COLORES.textoSecundario,
+  },
+
+  observacionContenedor: {
+    marginTop: 12,
+    padding: 11,
+    borderRadius: RADIO.sm,
+    backgroundColor: COLORES.fondo,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORES.primario,
+  },
+
+  observacionTitulo: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: COLORES.textoPrincipal,
+  },
+
+  observacionTexto: {
+    marginTop: 4,
+    fontSize: 13,
+    lineHeight: 19,
+    color: COLORES.textoSecundario,
+  },
+
+  botonAnular: {
+    minHeight: 43,
+    marginTop: 14,
+    borderRadius: RADIO.sm,
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    backgroundColor: COLORES.peligroClaro,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 7,
+  },
+
+  botonDeshabilitado: {
+    opacity: 0.6,
+  },
+
+  textoAnular: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: COLORES.peligro,
+  },
+
+  estadoPantalla: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 28,
+  },
+
+  errorTexto: {
+    marginTop: 13,
+    marginBottom: 18,
+    fontSize: 15,
+    textAlign: 'center',
+    color: COLORES.peligro,
+  },
+
+  vacioTitulo: {
+    marginTop: 15,
+    fontSize: 21,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    color: COLORES.textoPrincipal,
+  },
+
+  vacioTexto: {
+    marginTop: 8,
+    marginBottom: 20,
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: 'center',
+    color: COLORES.textoSecundario,
+  },
+
+  botonReintentar: {
+    minHeight: 46,
+    paddingHorizontal: 20,
+    borderRadius: RADIO.sm,
+    backgroundColor: COLORES.primario,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 7,
+  },
+
+  textoReintentar: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
 });
