@@ -3,10 +3,13 @@ import React, { useState } from "react";
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  KeyboardAvoidingView,
   Platform,
+  Alert,
 } from "react-native";
 
 import {
@@ -22,36 +25,35 @@ import {
   registrarNotificaciones,
 } from "../servicios/notificaciones";
 
-import {
-  useTema,
-} from "../context/TemaContext";
+import { useTema } from "../context/TemaContext";
 
-import {
-  RADIO,
-} from "../estilos/globales";
+export default function LoginQR({ navigation }) {
+  const {
+    colores,
+    cargarTemaUsuario,
+  } = useTema();
 
-export default function LoginQR({
-  navigation,
-}) {
-  const { colores } = useTema();
-
-  const styles =
-    crearStyles(colores);
+  const styles = crearStyles(colores);
 
   const [
     permiso,
     solicitarPermiso,
   ] = useCameraPermissions();
 
-  const [
-    escaneado,
-    setEscaneado,
-  ] = useState(false);
+  const [paso, setPaso] =
+    useState("solicitar");
 
-  const [
-    cargando,
-    setCargando,
-  ] = useState(false);
+  const [correo, setCorreo] =
+    useState("");
+
+  const [qrToken, setQrToken] =
+    useState("");
+
+  const [pin, setPin] =
+    useState("");
+
+  const [cargando, setCargando] =
+    useState(false);
 
   const [error, setError] =
     useState("");
@@ -66,7 +68,7 @@ export default function LoginQR({
       return JSON.parse(texto);
     } catch (errorJson) {
       console.log(
-        "Respuesta del login QR:",
+        "Respuesta del servidor QR:",
         texto
       );
 
@@ -74,6 +76,33 @@ export default function LoginQR({
         "El servidor respondió incorrectamente."
       );
     }
+  };
+
+  const mostrarMensaje = (
+    titulo,
+    mensaje,
+    alAceptar
+  ) => {
+    if (
+      Platform.OS === "web" &&
+      typeof window !== "undefined"
+    ) {
+      window.alert(mensaje);
+      alAceptar?.();
+
+      return;
+    }
+
+    Alert.alert(
+      titulo,
+      mensaje,
+      [
+        {
+          text: "Aceptar",
+          onPress: alAceptar,
+        },
+      ]
+    );
   };
 
   const entrarAlSistema = (
@@ -96,7 +125,6 @@ export default function LoginQR({
       routes: [
         {
           name: pantalla,
-
           params: {
             usuario,
           },
@@ -105,198 +133,566 @@ export default function LoginQR({
     });
   };
 
-  const procesarCodigo = async ({
+  const solicitarAcceso =
+    async () => {
+      const correoLimpio =
+        correo.trim().toLowerCase();
+
+      if (!correoLimpio) {
+        setError(
+          "Escribe tu correo electrónico."
+        );
+
+        return;
+      }
+
+      if (
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+          correoLimpio
+        )
+      ) {
+        setError(
+          "Escribe un correo electrónico válido."
+        );
+
+        return;
+      }
+
+      setError("");
+      setCargando(true);
+
+      try {
+        const respuesta = await fetch(
+          API_URLS.SOLICITAR_LOGIN_QR,
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+
+              Accept:
+                "application/json",
+            },
+
+            body: JSON.stringify({
+              correo: correoLimpio,
+            }),
+          }
+        );
+
+        const datos =
+          await leerRespuesta(
+            respuesta
+          );
+
+        if (
+          !respuesta.ok ||
+          (!datos.exito &&
+            !datos.success)
+        ) {
+          throw new Error(
+            datos.mensaje ||
+              datos.message ||
+              "No se pudo enviar el código."
+          );
+        }
+
+        mostrarMensaje(
+          "Correo enviado",
+
+          datos.mensaje ||
+            "Revisa tu correo. Recibirás un QR y un PIN.",
+
+          () => setPaso("escanear")
+        );
+      } catch (errorPeticion) {
+        console.error(
+          "Error al solicitar QR:",
+          errorPeticion
+        );
+
+        setError(
+          errorPeticion.message ||
+            "No se pudo solicitar el acceso."
+        );
+      } finally {
+        setCargando(false);
+      }
+    };
+
+  const procesarCodigo = ({
     data,
   }) => {
-    if (
-      escaneado ||
-      cargando
-    ) {
+    if (paso !== "escanear") {
       return;
     }
 
-    const qrToken = String(
+    const token = String(
       data || ""
     ).trim();
 
-    if (!qrToken) {
+    if (!token) {
       return;
     }
 
-    setEscaneado(true);
-    setCargando(true);
+    setQrToken(token);
+    setPin("");
     setError("");
-
-    try {
-      const respuesta = await fetch(
-        API_URLS.LOGIN_QR,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-
-            Accept:
-              "application/json",
-          },
-
-          body: JSON.stringify({
-            qr_token: qrToken,
-          }),
-        }
-      );
-
-      const datos =
-        await leerRespuesta(
-          respuesta
-        );
-
-      if (
-        !respuesta.ok ||
-        (!datos.exito &&
-          !datos.success)
-      ) {
-        throw new Error(
-          datos.mensaje ||
-            datos.message ||
-            "El código QR no es válido."
-        );
-      }
-
-      if (!datos.usuario) {
-        throw new Error(
-          "El servidor no devolvió los datos del usuario."
-        );
-      }
-
-      const usuario = {
-        ...datos.usuario,
-
-        qr_token:
-          datos.usuario
-            ?.qr_token ||
-          datos.usuario
-            ?.usuario_qr_token ||
-          qrToken,
-      };
-
-      /*
-       * Registrar el teléfono para
-       * recibir notificaciones.
-       *
-       * No usamos await para que esto
-       * no detenga el inicio de sesión.
-       */
-      registrarNotificaciones(
-        usuario
-      );
-
-      entrarAlSistema(usuario);
-    } catch (errorPeticion) {
-      console.error(
-        "Error de login QR:",
-        errorPeticion
-      );
-
-      setError(
-        errorPeticion.message ||
-          "No se pudo iniciar sesión con el código QR."
-      );
-    } finally {
-      setCargando(false);
-    }
+    setPaso("pin");
   };
 
-  const intentarNuevamente =
-    () => {
+  const iniciarSesion =
+    async () => {
+      const pinLimpio =
+        pin.trim();
+
+      if (!qrToken) {
+        setError(
+          "Primero debes escanear el código QR."
+        );
+
+        return;
+      }
+
+      if (
+        !/^\d{4}$/.test(
+          pinLimpio
+        )
+      ) {
+        setError(
+          "El PIN debe contener 4 números."
+        );
+
+        return;
+      }
+
       setError("");
-      setEscaneado(false);
+      setCargando(true);
+
+      try {
+        const respuesta = await fetch(
+          API_URLS.LOGIN_QR,
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+
+              Accept:
+                "application/json",
+            },
+
+            body: JSON.stringify({
+              qr_token: qrToken,
+              pin: pinLimpio,
+            }),
+          }
+        );
+
+        const datos =
+          await leerRespuesta(
+            respuesta
+          );
+
+        if (
+          !respuesta.ok ||
+          (!datos.exito &&
+            !datos.success)
+        ) {
+          throw new Error(
+            datos.mensaje ||
+              datos.message ||
+              "El QR o el PIN no son válidos."
+          );
+        }
+
+        if (!datos.usuario) {
+          throw new Error(
+            "El servidor no devolvió los datos del usuario."
+          );
+        }
+
+        cargarTemaUsuario(
+          datos.usuario
+        );
+
+        registrarNotificaciones(
+          datos.usuario
+        );
+
+        entrarAlSistema(
+          datos.usuario
+        );
+      } catch (errorPeticion) {
+        console.error(
+          "Error de login QR:",
+          errorPeticion
+        );
+
+        setError(
+          errorPeticion.message ||
+            "No se pudo iniciar sesión con el código QR."
+        );
+      } finally {
+        setCargando(false);
+      }
     };
 
+  const volverAlEscaner = () => {
+    setError("");
+    setPin("");
+    setQrToken("");
+    setPaso("escanear");
+  };
+
   /*
-   * Esperar mientras Expo consulta
-   * el permiso actual.
+   * PASO 2:
+   * Escanear el QR.
    */
-  if (!permiso) {
+  if (paso === "escanear") {
+    if (!permiso) {
+      return (
+        <View style={styles.centro}>
+          <ActivityIndicator
+            size="large"
+            color={
+              colores.primario
+            }
+          />
+
+          <Text
+            style={
+              styles.textoSecundario
+            }
+          >
+            Preparando cámara...
+          </Text>
+        </View>
+      );
+    }
+
+    if (!permiso.granted) {
+      return (
+        <View style={styles.centro}>
+          <View
+            style={
+              styles.iconoCirculo
+            }
+          >
+            <Ionicons
+              name="camera-outline"
+              size={48}
+              color={
+                colores.primario
+              }
+            />
+          </View>
+
+          <Text style={styles.titulo}>
+            Permiso de cámara
+          </Text>
+
+          <Text
+            style={styles.descripcion}
+          >
+            Necesitamos utilizar la
+            cámara para escanear el QR
+            enviado a tu correo.
+          </Text>
+
+          <TouchableOpacity
+            style={
+              styles.botonPrincipal
+            }
+            onPress={
+              solicitarPermiso
+            }
+          >
+            <Text
+              style={
+                styles
+                  .textoBotonPrincipal
+              }
+            >
+              Permitir cámara
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={
+              styles.botonTexto
+            }
+            onPress={() =>
+              setPaso("solicitar")
+            }
+          >
+            <Text
+              style={
+                styles.textoEnlace
+              }
+            >
+              Volver
+            </Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
     return (
-      <View style={styles.centro}>
-        <ActivityIndicator
-          size="large"
-          color={colores.primario}
+      <View
+        style={
+          styles.pantallaCamara
+        }
+      >
+        <CameraView
+          style={
+            StyleSheet
+              .absoluteFillObject
+          }
+          facing="back"
+          barcodeScannerSettings={{
+            barcodeTypes: ["qr"],
+          }}
+          onBarcodeScanned={
+            procesarCodigo
+          }
         />
 
-        <Text
+        <View
           style={
-            styles.textoCargando
+            styles.capaCamara
           }
         >
-          Preparando cámara...
-        </Text>
+          <View
+            style={
+              styles.headerCamara
+            }
+          >
+            <TouchableOpacity
+              style={
+                styles.botonVolver
+              }
+              onPress={() =>
+                setPaso(
+                  "solicitar"
+                )
+              }
+            >
+              <Ionicons
+                name="arrow-back"
+                size={25}
+                color="#ffffff"
+              />
+            </TouchableOpacity>
+
+            <Text
+              style={
+                styles.tituloCamara
+              }
+            >
+              Escanear QR
+            </Text>
+
+            <View
+              style={{
+                width: 42,
+              }}
+            />
+          </View>
+
+          <View
+            style={
+              styles
+                .contenidoCamara
+            }
+          >
+            <Text
+              style={
+                styles
+                  .instruccionCamara
+              }
+            >
+              Coloca dentro del cuadro
+              el QR que recibiste por
+              correo
+            </Text>
+
+            <View
+              style={
+                styles.marcoQR
+              }
+            />
+          </View>
+        </View>
       </View>
     );
   }
 
   /*
-   * Mostrar solicitud de permiso.
+   * PASO 3:
+   * Escribir el PIN.
    */
-  if (!permiso.granted) {
+  if (paso === "pin") {
     return (
-      <View style={styles.centro}>
+      <KeyboardAvoidingView
+        style={styles.pantalla}
+        behavior={
+          Platform.OS === "ios"
+            ? "padding"
+            : undefined
+        }
+      >
         <View
           style={
-            styles.iconoPermiso
+            styles.contenido
           }
         >
-          <Ionicons
-            name="camera-outline"
-            size={48}
-            color={colores.primario}
-          />
-        </View>
-
-        <Text
-          style={
-            styles.tituloPermiso
-          }
-        >
-          Permiso de cámara
-        </Text>
-
-        <Text
-          style={
-            styles.descripcionPermiso
-          }
-        >
-          RentaFácil necesita utilizar
-          la cámara para escanear tu
-          código QR.
-        </Text>
-
-        <TouchableOpacity
-          style={
-            styles.botonPermiso
-          }
-          onPress={
-            solicitarPermiso
-          }
-        >
-          <Ionicons
-            name="camera-outline"
-            size={21}
-            color="#ffffff"
-          />
-
-          <Text
+          <TouchableOpacity
             style={
               styles
-                .textoBotonPermiso
+                .botonVolverClaro
+            }
+            onPress={
+              volverAlEscaner
             }
           >
-            Permitir cámara
-          </Text>
-        </TouchableOpacity>
+            <Ionicons
+              name="arrow-back"
+              size={24}
+              color={
+                colores
+                  .textoPrincipal
+              }
+            />
+          </TouchableOpacity>
 
+          <View
+            style={
+              styles.iconoCirculo
+            }
+          >
+            <Ionicons
+              name="checkmark-circle-outline"
+              size={50}
+              color={
+                colores.exito
+              }
+            />
+          </View>
+
+          <Text style={styles.titulo}>
+            QR escaneado
+          </Text>
+
+          <Text
+            style={styles.descripcion}
+          >
+            Ahora escribe el PIN de 4
+            números que llegó en el
+            mismo correo.
+          </Text>
+
+          {error ? (
+            <Text
+              style={styles.error}
+            >
+              {error}
+            </Text>
+          ) : null}
+
+          <TextInput
+            style={styles.inputPin}
+            value={pin}
+            onChangeText={(
+              valor
+            ) =>
+              setPin(
+                valor.replace(
+                  /\D/g,
+                  ""
+                )
+              )
+            }
+            placeholder="0000"
+            placeholderTextColor={
+              colores
+                .textoSecundario
+            }
+            keyboardType="number-pad"
+            maxLength={4}
+            secureTextEntry
+            editable={!cargando}
+            autoFocus
+          />
+
+          <TouchableOpacity
+            style={
+              styles.botonPrincipal
+            }
+            onPress={
+              iniciarSesion
+            }
+            disabled={cargando}
+          >
+            {cargando ? (
+              <ActivityIndicator
+                color={
+                  colores
+                    .primarioTexto
+                }
+              />
+            ) : (
+              <Text
+                style={
+                  styles
+                    .textoBotonPrincipal
+                }
+              >
+                Iniciar sesión
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={
+              styles.botonTexto
+            }
+            onPress={
+              volverAlEscaner
+            }
+            disabled={cargando}
+          >
+            <Text
+              style={
+                styles.textoEnlace
+              }
+            >
+              Escanear otro código
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    );
+  }
+
+  /*
+   * PASO 1:
+   * Solicitar el QR por correo.
+   */
+  return (
+    <KeyboardAvoidingView
+      style={styles.pantalla}
+      behavior={
+        Platform.OS === "ios"
+          ? "padding"
+          : undefined
+      }
+    >
+      <View
+        style={styles.contenido}
+      >
         <TouchableOpacity
           style={
             styles.botonVolverClaro
@@ -305,237 +701,113 @@ export default function LoginQR({
             navigation.goBack()
           }
         >
-          <Text
-            style={
-              styles
-                .textoVolverClaro
+          <Ionicons
+            name="arrow-back"
+            size={24}
+            color={
+              colores.textoPrincipal
             }
-          >
-            Volver al inicio de sesión
-          </Text>
+          />
         </TouchableOpacity>
-      </View>
-    );
-  }
 
-  return (
-    <View style={styles.pantalla}>
-      <CameraView
-        style={
-          StyleSheet
-            .absoluteFillObject
-        }
-        facing="back"
-        barcodeScannerSettings={{
-          barcodeTypes: ["qr"],
-        }}
-        onBarcodeScanned={
-          escaneado
-            ? undefined
-            : procesarCodigo
-        }
-        onMountError={(evento) => {
-          console.error(
-            "Error de cámara:",
-            evento
-          );
-
-          setError(
-            "No se pudo abrir la cámara."
-          );
-
-          setEscaneado(true);
-        }}
-      />
-
-      <View
-        style={styles.capaOscura}
-      >
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={
-              styles.botonVolver
-            }
-            onPress={() =>
-              navigation.goBack()
-            }
-          >
-            <Ionicons
-              name="arrow-back"
-              size={25}
-              color="#ffffff"
-            />
-          </TouchableOpacity>
-
-          <Text
-            style={
-              styles.headerTitulo
-            }
-          >
-            Iniciar con QR
-          </Text>
-
-          <View
-            style={
-              styles.espacioHeader
-            }
+        <View
+          style={
+            styles.iconoCirculo
+          }
+        >
+          <Ionicons
+            name="qr-code-outline"
+            size={48}
+            color={colores.primario}
           />
         </View>
 
-        <View
-          style={
-            styles.contenidoCamara
-          }
+        <Text style={styles.titulo}>
+          Acceso con QR
+        </Text>
+
+        <Text
+          style={styles.descripcion}
         >
-          <Text
-            style={styles.titulo}
-          >
-            Escanea tu código QR
+          Escribe tu correo y te
+          enviaremos un QR junto con
+          un PIN de acceso.
+        </Text>
+
+        {error ? (
+          <Text style={styles.error}>
+            {error}
           </Text>
+        ) : null}
+
+        <TextInput
+          style={styles.input}
+          value={correo}
+          onChangeText={setCorreo}
+          placeholder="Correo electrónico"
+          placeholderTextColor={
+            colores.textoSecundario
+          }
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          editable={!cargando}
+        />
+
+        <TouchableOpacity
+          style={
+            styles.botonPrincipal
+          }
+          onPress={
+            solicitarAcceso
+          }
+          disabled={cargando}
+        >
+          {cargando ? (
+            <ActivityIndicator
+              color={
+                colores.primarioTexto
+              }
+            />
+          ) : (
+            <Text
+              style={
+                styles
+                  .textoBotonPrincipal
+              }
+            >
+              Enviar QR y PIN
+            </Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={
+            styles.botonSecundario
+          }
+          onPress={() => {
+            setError("");
+            setPaso("escanear");
+          }}
+          disabled={cargando}
+        >
+          <Ionicons
+            name="scan-outline"
+            size={21}
+            color={colores.primario}
+          />
 
           <Text
             style={
-              styles.descripcion
+              styles
+                .textoBotonSecundario
             }
           >
-            Coloca el código dentro del
-            cuadro
+            Ya tengo mi código
           </Text>
-
-          <View
-            style={styles.marcoQR}
-          >
-            <View
-              style={[
-                styles.esquina,
-                styles
-                  .esquinaSuperiorIzquierda,
-              ]}
-            />
-
-            <View
-              style={[
-                styles.esquina,
-                styles
-                  .esquinaSuperiorDerecha,
-              ]}
-            />
-
-            <View
-              style={[
-                styles.esquina,
-                styles
-                  .esquinaInferiorIzquierda,
-              ]}
-            />
-
-            <View
-              style={[
-                styles.esquina,
-                styles
-                  .esquinaInferiorDerecha,
-              ]}
-            />
-
-            {cargando && (
-              <View
-                style={
-                  styles.procesando
-                }
-              >
-                <ActivityIndicator
-                  size="large"
-                  color="#ffffff"
-                />
-
-                <Text
-                  style={
-                    styles
-                      .textoProcesando
-                  }
-                >
-                  Iniciando sesión...
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-
-        <View
-          style={
-            styles.panelInferior
-          }
-        >
-          {error ? (
-            <>
-              <View
-                style={
-                  styles.errorCaja
-                }
-              >
-                <Ionicons
-                  name="alert-circle-outline"
-                  size={23}
-                  color="#fecaca"
-                />
-
-                <Text
-                  style={
-                    styles.errorTexto
-                  }
-                >
-                  {error}
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                style={
-                  styles
-                    .botonReintentar
-                }
-                onPress={
-                  intentarNuevamente
-                }
-              >
-                <Ionicons
-                  name="scan-outline"
-                  size={21}
-                  color="#ffffff"
-                />
-
-                <Text
-                  style={
-                    styles
-                      .textoReintentar
-                  }
-                >
-                  Escanear nuevamente
-                </Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <View
-              style={styles.ayuda}
-            >
-              <Ionicons
-                name="information-circle-outline"
-                size={22}
-                color="#ffffff"
-              />
-
-              <Text
-                style={
-                  styles.ayudaTexto
-                }
-              >
-                Puedes encontrar tu código
-                en Perfil → Mi código QR.
-              </Text>
-            </View>
-          )}
-        </View>
+        </TouchableOpacity>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -543,96 +815,225 @@ function crearStyles(colores) {
   return StyleSheet.create({
     pantalla: {
       flex: 1,
-      backgroundColor: "#000000",
-    },
-
-    centro: {
-      flex: 1,
-      paddingHorizontal: 28,
-      justifyContent: "center",
-      alignItems: "center",
       backgroundColor:
         colores.fondo,
     },
 
-    textoCargando: {
-      marginTop: 13,
-      fontSize: 15,
-      color:
-        colores.textoSecundario,
+    contenido: {
+      flex: 1,
+      width: "100%",
+      maxWidth: 440,
+      alignSelf: "center",
+      justifyContent: "center",
+      paddingHorizontal: 24,
+      paddingBottom: 35,
     },
 
-    iconoPermiso: {
-      width: 90,
-      height: 90,
-      borderRadius: 45,
+    centro: {
+      flex: 1,
       justifyContent: "center",
       alignItems: "center",
+      paddingHorizontal: 25,
+
+      backgroundColor:
+        colores.fondo,
+    },
+
+    botonVolverClaro: {
+      position: "absolute",
+
+      top:
+        Platform.OS ===
+        "android"
+          ? 45
+          : 20,
+
+      left: 20,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+
+      justifyContent: "center",
+      alignItems: "center",
+
+      backgroundColor:
+        colores.tarjeta,
+
+      borderWidth: 1,
+      borderColor: colores.borde,
+    },
+
+    iconoCirculo: {
+      width: 88,
+      height: 88,
+      borderRadius: 44,
+      alignSelf: "center",
+      justifyContent: "center",
+      alignItems: "center",
+
       backgroundColor:
         colores.primarioClaro,
+
+      marginBottom: 18,
     },
 
-    tituloPermiso: {
-      marginTop: 20,
-      fontSize: 24,
+    titulo: {
+      fontSize: 26,
       fontWeight: "bold",
+
       color:
         colores.textoPrincipal,
+
       textAlign: "center",
     },
 
-    descripcionPermiso: {
-      maxWidth: 360,
-      marginTop: 10,
+    descripcion: {
+      marginTop: 9,
+      marginBottom: 22,
+
       fontSize: 15,
       lineHeight: 22,
+
       color:
         colores.textoSecundario,
+
       textAlign: "center",
     },
 
-    botonPermiso: {
+    textoSecundario: {
+      marginTop: 12,
+
+      color:
+        colores.textoSecundario,
+    },
+
+    error: {
+      marginBottom: 14,
+      padding: 12,
+      borderRadius: 9,
+
+      color: colores.peligro,
+
+      backgroundColor:
+        colores.peligroClaro,
+
+      textAlign: "center",
+    },
+
+    input: {
+      minHeight: 52,
+
+      borderWidth: 1,
+      borderColor: colores.borde,
+      borderRadius: 10,
+
+      backgroundColor:
+        colores.campo,
+
+      color:
+        colores.textoPrincipal,
+
+      paddingHorizontal: 14,
+      fontSize: 16,
+    },
+
+    inputPin: {
       width: "100%",
-      maxWidth: 350,
-      minHeight: 50,
-      marginTop: 24,
-      borderRadius: RADIO.sm,
-      flexDirection: "row",
+      minHeight: 65,
+
+      borderWidth: 2,
+      borderColor:
+        colores.primario,
+
+      borderRadius: 12,
+
+      backgroundColor:
+        colores.campo,
+
+      color:
+        colores.textoPrincipal,
+
+      fontSize: 29,
+      fontWeight: "bold",
+      letterSpacing: 15,
+      textAlign: "center",
+      paddingHorizontal: 15,
+    },
+
+    botonPrincipal: {
+      minHeight: 52,
+      marginTop: 16,
+      borderRadius: 10,
+
       justifyContent: "center",
       alignItems: "center",
-      gap: 8,
+
       backgroundColor:
         colores.primario,
     },
 
-    textoBotonPermiso: {
+    textoBotonPrincipal: {
+      color:
+        colores.primarioTexto,
+
       fontSize: 16,
       fontWeight: "bold",
-      color: "#ffffff",
     },
 
-    botonVolverClaro: {
-      marginTop: 18,
-      padding: 10,
-    },
+    botonSecundario: {
+      minHeight: 52,
+      marginTop: 12,
+      borderRadius: 10,
 
-    textoVolverClaro: {
-      fontSize: 14,
-      fontWeight: "600",
-      color: colores.primario,
-    },
+      flexDirection: "row",
+      gap: 8,
 
-    capaOscura: {
-      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+
+      borderWidth: 1,
+      borderColor:
+        colores.primario,
+
       backgroundColor:
-        "rgba(0, 0, 0, 0.22)",
+        colores.tarjeta,
     },
 
-    header: {
+    textoBotonSecundario: {
+      color: colores.primario,
+      fontWeight: "bold",
+      fontSize: 15,
+    },
+
+    botonTexto: {
+      alignSelf: "center",
+      marginTop: 17,
+      padding: 8,
+    },
+
+    textoEnlace: {
+      color: colores.primario,
+      fontWeight: "600",
+    },
+
+    pantallaCamara: {
+      flex: 1,
+      backgroundColor: "#000000",
+    },
+
+    capaCamara: {
+      flex: 1,
+
+      backgroundColor:
+        "rgba(0,0,0,0.22)",
+    },
+
+    headerCamara: {
       paddingTop:
-        Platform.OS === "android"
-          ? 42
-          : 18,
+        Platform.OS ===
+        "android"
+          ? 45
+          : 20,
 
       paddingHorizontal: 18,
       paddingBottom: 14,
@@ -643,27 +1044,25 @@ function crearStyles(colores) {
         "space-between",
 
       backgroundColor:
-        "rgba(0, 0, 0, 0.55)",
+        "rgba(0,0,0,0.55)",
     },
 
     botonVolver: {
       width: 42,
       height: 42,
       borderRadius: 21,
+
       justifyContent: "center",
       alignItems: "center",
+
       backgroundColor:
-        "rgba(255, 255, 255, 0.16)",
+        "rgba(255,255,255,0.16)",
     },
 
-    headerTitulo: {
-      fontSize: 19,
-      fontWeight: "bold",
+    tituloCamara: {
       color: "#ffffff",
-    },
-
-    espacioHeader: {
-      width: 42,
+      fontWeight: "bold",
+      fontSize: 19,
     },
 
     contenidoCamara: {
@@ -673,14 +1072,18 @@ function crearStyles(colores) {
       paddingHorizontal: 24,
     },
 
-    titulo: {
-      fontSize: 25,
-      fontWeight: "bold",
+    instruccionCamara: {
+      maxWidth: 330,
+      marginBottom: 25,
+
       color: "#ffffff",
+      fontSize: 17,
+      fontWeight: "600",
+      lineHeight: 24,
       textAlign: "center",
 
       textShadowColor:
-        "rgba(0, 0, 0, 0.7)",
+        "rgba(0,0,0,0.8)",
 
       textShadowOffset: {
         width: 0,
@@ -690,146 +1093,15 @@ function crearStyles(colores) {
       textShadowRadius: 4,
     },
 
-    descripcion: {
-      marginTop: 7,
-      marginBottom: 24,
-      fontSize: 15,
-      color: "#ffffff",
-      textAlign: "center",
-    },
-
     marcoQR: {
       width: 270,
       height: 270,
-      position: "relative",
       borderRadius: 22,
-
-      backgroundColor:
-        "rgba(255, 255, 255, 0.06)",
-    },
-
-    esquina: {
-      width: 56,
-      height: 56,
-      position: "absolute",
+      borderWidth: 5,
       borderColor: "#5eead4",
-    },
-
-    esquinaSuperiorIzquierda: {
-      top: 0,
-      left: 0,
-      borderTopWidth: 5,
-      borderLeftWidth: 5,
-      borderTopLeftRadius: 20,
-    },
-
-    esquinaSuperiorDerecha: {
-      top: 0,
-      right: 0,
-      borderTopWidth: 5,
-      borderRightWidth: 5,
-      borderTopRightRadius: 20,
-    },
-
-    esquinaInferiorIzquierda: {
-      bottom: 0,
-      left: 0,
-      borderBottomWidth: 5,
-      borderLeftWidth: 5,
-      borderBottomLeftRadius: 20,
-    },
-
-    esquinaInferiorDerecha: {
-      right: 0,
-      bottom: 0,
-      borderRightWidth: 5,
-      borderBottomWidth: 5,
-      borderBottomRightRadius: 20,
-    },
-
-    procesando: {
-      ...StyleSheet
-        .absoluteFillObject,
-
-      borderRadius: 22,
-      justifyContent: "center",
-      alignItems: "center",
 
       backgroundColor:
-        "rgba(0, 0, 0, 0.72)",
-    },
-
-    textoProcesando: {
-      marginTop: 13,
-      fontSize: 15,
-      fontWeight: "600",
-      color: "#ffffff",
-    },
-
-    panelInferior: {
-      minHeight: 150,
-      paddingHorizontal: 22,
-      paddingTop: 16,
-
-      paddingBottom:
-        Platform.OS === "ios"
-          ? 32
-          : 22,
-
-      justifyContent: "center",
-
-      backgroundColor:
-        "rgba(0, 0, 0, 0.58)",
-    },
-
-    ayuda: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-    },
-
-    ayudaTexto: {
-      flexShrink: 1,
-      marginLeft: 9,
-      fontSize: 14,
-      lineHeight: 20,
-      color: "#ffffff",
-    },
-
-    errorCaja: {
-      padding: 13,
-      borderRadius: RADIO.sm,
-      flexDirection: "row",
-      alignItems: "center",
-
-      backgroundColor:
-        "rgba(127, 29, 29, 0.88)",
-    },
-
-    errorTexto: {
-      flex: 1,
-      marginLeft: 9,
-      fontSize: 13,
-      lineHeight: 19,
-      color: "#ffffff",
-    },
-
-    botonReintentar: {
-      minHeight: 48,
-      marginTop: 12,
-      borderRadius: RADIO.sm,
-      flexDirection: "row",
-      justifyContent: "center",
-      alignItems: "center",
-      gap: 8,
-      backgroundColor:
-        colores.primario,
-    },
-
-    textoReintentar: {
-      fontSize: 15,
-      fontWeight: "bold",
-      color: "#ffffff",
+        "rgba(255,255,255,0.05)",
     },
   });
 }

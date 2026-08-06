@@ -76,7 +76,11 @@ export default function AdminDashboard({
   navigation,
   route,
 }) {
-  const { colores } = useTema();
+  const {
+    colores,
+    limpiarTemaUsuario,
+  } = useTema();
+
   const styles = crearStyles(colores);
 
   const usuario = route?.params?.usuario;
@@ -95,6 +99,8 @@ export default function AdminDashboard({
   };
 
   const cerrarSesion = () => {
+    limpiarTemaUsuario();
+
     navigation.replace('Login');
   };
 

@@ -27,9 +27,17 @@ import {
   registrarNotificaciones,
 } from "../servicios/notificaciones";
 
+import {
+  useTema,
+} from "../context/TemaContext";
+
 export default function Login({
   navigation,
 }) {
+  const {
+    cargarTemaUsuario,
+  } = useTema();
+
   const [email, setEmail] =
     useState("");
 
@@ -72,15 +80,13 @@ export default function Login({
                   "application/json",
               },
 
-              body: JSON.stringify(
-                {
-                  usuario_nombre:
-                    email.trim(),
+              body: JSON.stringify({
+                usuario_nombre:
+                  email.trim(),
 
-                  usuario_clave:
-                    clave,
-                }
-              ),
+                usuario_clave:
+                  clave,
+              }),
             }
           );
 
@@ -129,10 +135,25 @@ export default function Login({
           return;
         }
 
+        /*
+         * Cargar el tema individual
+         * guardado en MySQL.
+         */
+        cargarTemaUsuario(
+          usuario
+        );
+
+        /*
+         * Registrar el dispositivo
+         * para notificaciones.
+         */
         registrarNotificaciones(
           usuario
         );
 
+        /*
+         * Navegar según el rol.
+         */
         if (
           usuario.rol ===
             "arrendador" ||

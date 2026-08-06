@@ -7,29 +7,36 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.gelsynest.RentaFacil"
     },
+
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+
       "edgeToEdgeEnabled": true,
       "package": "com.gelsynest.RentaFacil",
       "googleServicesFile": "./google-services.json"
     },
+
     "web": {
       "favicon": "./assets/favicon.png"
     },
+
     "plugins": [
       "@react-native-community/datetimepicker",
+
       [
         "expo-image-picker",
         {
@@ -38,6 +45,7 @@
           "microphonePermission": false
         }
       ],
+
       [
         "expo-location",
         {
@@ -46,6 +54,7 @@
           "isAndroidBackgroundLocationEnabled": false
         }
       ],
+
       [
         "expo-calendar",
         {
@@ -53,6 +62,7 @@
           "remindersPermission": "RentaFacil necesita acceder a tus recordatorios."
         }
       ],
+
       [
         "expo-notifications",
         {
@@ -69,8 +79,18 @@
           "recordAudioAndroid": false,
           "barcodeScannerEnabled": true
         }
+      ],
+
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
       ]
     ],
+
     "extra": {
       "eas": {
         "projectId": "1ca20c8a-ebfe-4e6f-bc8f-43593270fddb"

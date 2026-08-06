@@ -624,6 +624,44 @@ export default function Perfil({
       }
     };
 
+    const seleccionarOrigenImagen = () => {
+  /*
+   * En la versión web abrimos directamente
+   * el selector de archivos.
+   */
+  if (Platform.OS === "web") {
+    elegirImagen("galeria");
+    return;
+  }
+
+  /*
+   * En Android y iOS mostramos las
+   * opciones antes de abrir la cámara.
+   */
+  Alert.alert(
+    "Seleccionar fotografía",
+    "Elige de dónde deseas obtener la imagen.",
+    [
+      {
+        text: "Cámara",
+
+        onPress: () =>
+          elegirImagen("camara"),
+      },
+      {
+        text: "Galería",
+
+        onPress: () =>
+          elegirImagen("galeria"),
+      },
+      {
+        text: "Cancelar",
+        style: "cancel",
+      },
+    ]
+  );
+};
+
   const subirFotografia =
     async (imagen) => {
       if (
@@ -1057,75 +1095,32 @@ export default function Perfil({
               ).toUpperCase()}
             </Text>
           </View>
+<View style={styles.botonesFoto}>
+  <TouchableOpacity
+    style={styles.botonFoto}
+    onPress={seleccionarOrigenImagen}
+    disabled={subiendoFoto}
+  >
+    {subiendoFoto ? (
+      <ActivityIndicator
+        size="small"
+        color={colores.primario}
+      />
+    ) : (
+      <Ionicons
+        name="camera-outline"
+        size={19}
+        color={colores.primario}
+      />
+    )}
 
-          <View
-            style={
-              styles.botonesFoto
-            }
-          >
-            {Platform.OS !==
-              'web' && (
-              <TouchableOpacity
-                style={
-                  styles.botonFoto
-                }
-                onPress={() =>
-                  elegirImagen(
-                    'camara'
-                  )
-                }
-                disabled={
-                  subiendoFoto
-                }
-              >
-                <Ionicons
-                  name="camera-outline"
-                  size={19}
-                  color={
-                    colores.primario
-                  }
-                />
-
-                <Text
-                  style={
-                    styles.textoFoto
-                  }
-                >
-                  Cámara
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity
-              style={
-                styles.botonFoto
-              }
-              onPress={() =>
-                elegirImagen(
-                  'galeria'
-                )
-              }
-              disabled={
-                subiendoFoto
-              }
-            >
-              <Ionicons
-                name="images-outline"
-                size={19}
-                color={
-                  colores.primario
-                }
-              />
-
-              <Text
-                style={
-                  styles.textoFoto
-                }
-              >
-                Cambiar foto
-              </Text>
-            </TouchableOpacity>
-          </View>
+    <Text style={styles.textoFoto}>
+      {subiendoFoto
+        ? "Subiendo fotografía..."
+        : "Cambiar foto"}
+    </Text>
+  </TouchableOpacity>
+</View>
         </View>
 
         <View

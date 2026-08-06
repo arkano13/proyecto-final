@@ -9,8 +9,10 @@ export const API_URLS = {
 
   LOGIN: `${API_BASE_URL}/api/auth/login.php`,
 
-  LOGIN_QR:
-  `${API_BASE_URL}/api/auth/loginQr.php`,
+  LOGIN_QR: `${API_BASE_URL}/api/auth/loginQr.php`,
+
+  SOLICITAR_LOGIN_QR:
+  `${API_BASE_URL}/api/auth/solicitarLoginQr.php`,
 
   REGISTRAR_USUARIO: `${API_BASE_URL}/api/auth/registrarUsuario.php`,
 
@@ -31,6 +33,8 @@ export const API_URLS = {
   ACTUALIZAR_PERFIL: `${API_BASE_URL}/api/usuarios/actualizarPerfil.php`,
 
   CAMBIAR_CLAVE: `${API_BASE_URL}/api/usuarios/cambiarClave.php`,
+
+  ACTUALIZAR_TEMA: `${API_BASE_URL}/api/usuarios/actualizarTema.php`,
 
   /*
    * PROPIEDADES

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 
 import {
   View,
@@ -11,21 +11,21 @@ import {
   Image,
   Platform,
   StyleSheet,
-} from 'react-native';
+} from "react-native";
 
-import * as ImagePicker from 'expo-image-picker';
-import * as Location from 'expo-location';
+import * as ImagePicker from "expo-image-picker";
 
-import { API_URLS } from '../config/config';
-import { useTema } from '../context/TemaContext';
+import { API_URLS } from "../config/config";
+import { useTema } from "../context/TemaContext";
+import SelectorMapa from "../componentes/SelectorMapa";
 
 const TIPOS = [
-  'Casa',
-  'Apartamento',
-  'Local',
-  'Oficina',
-  'Bodega',
-  'Terreno',
+  "Casa",
+  "Apartamento",
+  "Local",
+  "Oficina",
+  "Bodega",
+  "Terreno",
 ];
 
 export default function FormPropiedad({
@@ -36,127 +36,210 @@ export default function FormPropiedad({
   const styles = crearStyles(colores);
 
   const usuario = route.params?.usuario;
-  const propExistente = route.params?.propiedad;
-  const editando = Boolean(propExistente?.id);
+
+  const propExistente =
+    route.params?.propiedad;
+
+  const editando = Boolean(
+    propExistente?.id
+  );
 
   const [titulo, setTitulo] = useState(
-    propExistente?.titulo || ''
+    propExistente?.titulo || ""
   );
 
-  const [descripcion, setDescripcion] = useState(
-    propExistente?.descripcion || ''
+  const [
+    descripcion,
+    setDescripcion,
+  ] = useState(
+    propExistente?.descripcion || ""
   );
 
-  const [direccion, setDireccion] = useState(
-    propExistente?.direccion || ''
-  );
+  const [direccion, setDireccion] =
+    useState(
+      propExistente?.direccion || ""
+    );
 
   const [precio, setPrecio] = useState(
-    propExistente?.precio?.toString() || ''
+    propExistente?.precio?.toString() ||
+      ""
   );
 
   const [tipo, setTipo] = useState(
-    propExistente?.tipo || 'Casa'
+    propExistente?.tipo || "Casa"
   );
 
-  const [habitaciones, setHabitaciones] = useState(
-    propExistente?.habitaciones?.toString() || '0'
+  const [
+    habitaciones,
+    setHabitaciones,
+  ] = useState(
+    propExistente?.habitaciones?.toString() ||
+      "0"
   );
 
   const [banos, setBanos] = useState(
-    propExistente?.banos?.toString() || '0'
+    propExistente?.banos?.toString() ||
+      "0"
   );
 
-  const [foto, setFoto] = useState(null);
+  const [foto, setFoto] =
+    useState(null);
 
-  const [ubicacion, setUbicacion] = useState(
-    propExistente?.latitud !== null &&
-      propExistente?.latitud !== undefined &&
-      propExistente?.longitud !== null &&
-      propExistente?.longitud !== undefined
-      ? {
-          latitude: Number(propExistente.latitud),
-          longitude: Number(propExistente.longitud),
-        }
-      : null
-  );
+  const [ubicacion, setUbicacion] =
+    useState(
+      propExistente?.latitud !== null &&
+        propExistente?.latitud !==
+          undefined &&
+        propExistente?.longitud !==
+          null &&
+        propExistente?.longitud !==
+          undefined
+        ? {
+            latitude: Number(
+              propExistente.latitud
+            ),
+
+            longitude: Number(
+              propExistente.longitud
+            ),
+          }
+        : null
+    );
 
   const [guardando, setGuardando] =
     useState(false);
 
-  const tomarFoto = async () => {
-    const permiso =
-      await ImagePicker.requestCameraPermissionsAsync();
+  const seleccionarDesdeCamara =
+    async () => {
+      try {
+        const permiso =
+          await ImagePicker.requestCameraPermissionsAsync();
 
-    if (!permiso.granted) {
-      Alert.alert(
-        'Permiso requerido',
-        'Necesitamos acceso a tu cámara.'
-      );
+        if (!permiso.granted) {
+          Alert.alert(
+            "Permiso requerido",
+            "Necesitamos acceso a tu cámara."
+          );
+
+          return;
+        }
+
+        const resultado =
+          await ImagePicker.launchCameraAsync(
+            {
+              mediaTypes: ["images"],
+              quality: 0.7,
+              allowsEditing: false,
+            }
+          );
+
+        if (
+          !resultado.canceled &&
+          resultado.assets?.length > 0
+        ) {
+          setFoto(
+            resultado.assets[0]
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Error al abrir la cámara:",
+          error
+        );
+
+        Alert.alert(
+          "Error",
+          "No se pudo abrir la cámara."
+        );
+      }
+    };
+
+  const seleccionarDesdeGaleria =
+    async () => {
+      try {
+        const permiso =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+        if (
+          Platform.OS !== "web" &&
+          !permiso.granted
+        ) {
+          Alert.alert(
+            "Permiso requerido",
+            "Necesitamos acceso a tus fotografías."
+          );
+
+          return;
+        }
+
+        const resultado =
+          await ImagePicker.launchImageLibraryAsync(
+            {
+              mediaTypes: ["images"],
+              quality: 0.7,
+              allowsEditing: false,
+            }
+          );
+
+        if (
+          !resultado.canceled &&
+          resultado.assets?.length > 0
+        ) {
+          setFoto(
+            resultado.assets[0]
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Error al abrir la galería:",
+          error
+        );
+
+        if (Platform.OS === "web") {
+          window.alert(
+            "No se pudo abrir la galería."
+          );
+        } else {
+          Alert.alert(
+            "Error",
+            "No se pudo abrir la galería."
+          );
+        }
+      }
+    };
+
+  const seleccionarFoto = () => {
+    if (Platform.OS === "web") {
+      seleccionarDesdeGaleria();
 
       return;
     }
 
-    const resultado =
-      await ImagePicker.launchCameraAsync({
-        quality: 0.7,
-        allowsEditing: false,
-      });
-
-    if (!resultado.canceled) {
-      setFoto(resultado.assets[0]);
-    }
+    Alert.alert(
+      "Seleccionar fotografía",
+      "Elige de dónde deseas obtener la imagen.",
+      [
+        {
+          text: "Cámara",
+          onPress:
+            seleccionarDesdeCamara,
+        },
+        {
+          text: "Galería",
+          onPress:
+            seleccionarDesdeGaleria,
+        },
+        {
+          text: "Cancelar",
+          style: "cancel",
+        },
+      ]
+    );
   };
 
-  const obtenerUbicacion = async () => {
-    try {
-      const permiso =
-        await Location.requestForegroundPermissionsAsync();
-
-      if (!permiso.granted) {
-        Alert.alert(
-          'Permiso requerido',
-          'Necesitamos acceso a tu ubicación.'
-        );
-
-        return;
-      }
-
-      const localizacion =
-        await Location.getCurrentPositionAsync({});
-
-      setUbicacion(localizacion.coords);
-
-      if (Platform.OS === 'web') {
-        window.alert(
-          'La ubicación se obtuvo correctamente.'
-        );
-      } else {
-        Alert.alert(
-          '📍 Ubicación obtenida',
-          'La ubicación se guardó correctamente.'
-        );
-      }
-    } catch (error) {
-      console.error(
-        'Error al obtener ubicación:',
-        error
-      );
-
-      if (Platform.OS === 'web') {
-        window.alert(
-          'No se pudo obtener la ubicación.'
-        );
-      } else {
-        Alert.alert(
-          'Error',
-          'No se pudo obtener la ubicación.'
-        );
-      }
-    }
-  };
-
-  const subirFotografia = async propiedadId => {
+  const subirFotografia = async (
+    propiedadId
+  ) => {
     if (!foto) {
       return null;
     }
@@ -169,49 +252,49 @@ export default function FormPropiedad({
     const tipoArchivo =
       foto.mimeType ||
       foto.file?.type ||
-      'image/jpeg';
+      "image/jpeg";
 
-    const formulario = new FormData();
+    const formulario =
+      new FormData();
 
     formulario.append(
-      'tableName',
-      'tbl_propiedad_img_final'
+      "tableName",
+      "tbl_propiedad_img_final"
     );
 
     formulario.append(
-      'fieldID',
-      'propiedad_id'
+      "fieldID",
+      "propiedad_id"
     );
 
     formulario.append(
-      'fieldRuta',
-      'propiedad_img_ruta'
+      "fieldRuta",
+      "propiedad_img_ruta"
     );
 
     formulario.append(
-      'recordId',
+      "recordId",
       propiedadId.toString()
     );
 
-    if (Platform.OS === 'web') {
+    if (Platform.OS === "web") {
       let archivoWeb = foto.file;
 
       if (!archivoWeb) {
-        const respuestaArchivo = await fetch(
-          foto.uri
-        );
+        const respuestaArchivo =
+          await fetch(foto.uri);
 
         archivoWeb =
           await respuestaArchivo.blob();
       }
 
       formulario.append(
-        'image',
+        "image",
         archivoWeb,
         nombre
       );
     } else {
-      formulario.append('image', {
+      formulario.append("image", {
         uri: foto.uri,
         name: nombre,
         type: tipoArchivo,
@@ -221,58 +304,67 @@ export default function FormPropiedad({
     const respuesta = await fetch(
       API_URLS.SUBIR_FOTO,
       {
-        method: 'POST',
+        method: "POST",
         body: formulario,
       }
     );
 
-    const datos = await respuesta.json();
+    const datos =
+      await respuesta.json();
 
-    if (!respuesta.ok || !datos.exito) {
+    if (
+      !respuesta.ok ||
+      !datos.exito
+    ) {
       throw new Error(
         datos.mensaje ||
-          'No se pudo subir la fotografía.'
+          "No se pudo subir la fotografía."
       );
     }
 
     return datos;
   };
 
-  const mostrarError = mensaje => {
-    if (Platform.OS === 'web') {
+  const mostrarError = (mensaje) => {
+    if (Platform.OS === "web") {
       window.alert(mensaje);
     } else {
-      Alert.alert('Error', mensaje);
-    }
-  };
-
-  const mostrarActualizacionExitosa = () => {
-    if (Platform.OS === 'web') {
-      window.alert(
-        'La propiedad se actualizó con éxito.'
+      Alert.alert(
+        "Error",
+        mensaje
       );
-
-      navigation.goBack();
-      return;
     }
-
-    Alert.alert(
-      '✅ Propiedad actualizada',
-      'La propiedad se actualizó con éxito.',
-      [
-        {
-          text: 'Aceptar',
-          onPress: () =>
-            navigation.goBack(),
-        },
-      ]
-    );
   };
+
+  const mostrarActualizacionExitosa =
+    () => {
+      if (Platform.OS === "web") {
+        window.alert(
+          "La propiedad se actualizó con éxito."
+        );
+
+        navigation.goBack();
+
+        return;
+      }
+
+      Alert.alert(
+        "✅ Propiedad actualizada",
+        "La propiedad se actualizó con éxito.",
+        [
+          {
+            text: "Aceptar",
+            onPress: () =>
+              navigation.goBack(),
+          },
+        ]
+      );
+    };
 
   const guardar = async () => {
     if (!usuario?.id) {
       mostrarError(
-        'No se encontró la información del usuario.'
+        "No se encontró la información del usuario."
       );
 
       return;
@@ -284,43 +376,47 @@ export default function FormPropiedad({
       !direccion.trim()
     ) {
       mostrarError(
-        'Título, dirección y precio son obligatorios.'
+        "Título, dirección y precio son obligatorios."
       );
 
       return;
     }
 
     const precioNumero = Number(
-      precio.replace(',', '.')
+      precio.replace(",", ".")
     );
 
-    const habitacionesNumero = Number(
-      habitaciones || 0
-    );
+    const habitacionesNumero =
+      Number(habitaciones || 0);
 
-    const banosNumero = Number(
-      banos || 0
-    );
+    const banosNumero =
+      Number(banos || 0);
 
     if (
-      !Number.isFinite(precioNumero) ||
+      !Number.isFinite(
+        precioNumero
+      ) ||
       precioNumero <= 0
     ) {
       mostrarError(
-        'El precio debe ser mayor que cero.'
+        "El precio debe ser mayor que cero."
       );
 
       return;
     }
 
     if (
-      !Number.isInteger(habitacionesNumero) ||
+      !Number.isInteger(
+        habitacionesNumero
+      ) ||
       habitacionesNumero < 0 ||
-      !Number.isInteger(banosNumero) ||
+      !Number.isInteger(
+        banosNumero
+      ) ||
       banosNumero < 0
     ) {
       mostrarError(
-        'Las habitaciones y baños deben ser números enteros.'
+        "Las habitaciones y baños deben ser números enteros."
       );
 
       return;
@@ -332,14 +428,28 @@ export default function FormPropiedad({
       const cuerpo = {
         usuario_id: usuario.id,
         titulo: titulo.trim(),
-        descripcion: descripcion.trim(),
+
+        descripcion:
+          descripcion.trim(),
+
         tipo,
         precio: precioNumero,
-        direccion: direccion.trim(),
-        habitaciones: habitacionesNumero,
+
+        direccion:
+          direccion.trim(),
+
+        habitaciones:
+          habitacionesNumero,
+
         banos: banosNumero,
-        latitud: ubicacion?.latitude ?? null,
-        longitud: ubicacion?.longitude ?? null,
+
+        latitud:
+          ubicacion?.latitude ??
+          null,
+
+        longitud:
+          ubicacion?.longitude ??
+          null,
       };
 
       if (editando) {
@@ -354,22 +464,29 @@ export default function FormPropiedad({
       const respuesta = await fetch(
         endpoint,
         {
-          method: 'POST',
+          method: "POST",
 
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type":
+              "application/json",
           },
 
-          body: JSON.stringify(cuerpo),
+          body: JSON.stringify(
+            cuerpo
+          ),
         }
       );
 
-      const datos = await respuesta.json();
+      const datos =
+        await respuesta.json();
 
-      if (!respuesta.ok || !datos.exito) {
+      if (
+        !respuesta.ok ||
+        !datos.exito
+      ) {
         mostrarError(
           datos.mensaje ||
-            'No se pudo guardar la propiedad.'
+            "No se pudo guardar la propiedad."
         );
 
         return;
@@ -381,26 +498,31 @@ export default function FormPropiedad({
 
       if (foto) {
         try {
-          await subirFotografia(propiedadId);
+          await subirFotografia(
+            propiedadId
+          );
         } catch (errorFoto) {
           console.error(
-            'Error al subir fotografía:',
+            "Error al subir fotografía:",
             errorFoto
           );
 
-          if (Platform.OS === 'web') {
+          if (
+            Platform.OS === "web"
+          ) {
             window.alert(
-              'La propiedad se guardó, pero la fotografía no pudo subirse.'
+              "La propiedad se guardó, pero la fotografía no pudo subirse."
             );
 
             navigation.goBack();
           } else {
             Alert.alert(
-              'Propiedad guardada',
-              'La propiedad se guardó, pero la fotografía no pudo subirse.',
+              "Propiedad guardada",
+              "La propiedad se guardó, pero la fotografía no pudo subirse.",
               [
                 {
-                  text: 'Aceptar',
+                  text: "Aceptar",
+
                   onPress: () =>
                     navigation.goBack(),
                 },
@@ -412,10 +534,6 @@ export default function FormPropiedad({
         }
       }
 
-      /*
-       * Solamente mostramos una alerta
-       * cuando se actualiza una propiedad.
-       */
       if (editando) {
         mostrarActualizacionExitosa();
       } else {
@@ -423,12 +541,12 @@ export default function FormPropiedad({
       }
     } catch (errorPeticion) {
       console.error(
-        'Error al guardar propiedad:',
+        "Error al guardar propiedad:",
         errorPeticion
       );
 
       mostrarError(
-        'No se pudo conectar con el servidor.'
+        "No se pudo conectar con el servidor."
       );
     } finally {
       setGuardando(false);
@@ -438,10 +556,12 @@ export default function FormPropiedad({
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitulo}>
+        <Text
+          style={styles.headerTitulo}
+        >
           {editando
-            ? '✏️ Editar Propiedad'
-            : '➕ Nueva Propiedad'}
+            ? "✏️ Editar Propiedad"
+            : "➕ Nueva Propiedad"}
         </Text>
 
         <Text style={styles.headerSub}>
@@ -450,11 +570,17 @@ export default function FormPropiedad({
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={
+          styles.scroll
+        }
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.seccion}>
-          <Text style={styles.seccionTitulo}>
+          <Text
+            style={
+              styles.seccionTitulo
+            }
+          >
             📋 Información básica
           </Text>
 
@@ -465,7 +591,9 @@ export default function FormPropiedad({
           <TextInput
             style={styles.input}
             placeholder="Ej: Apartamento céntrico"
-            placeholderTextColor={colores.textoSecundario}
+            placeholderTextColor={
+              colores.textoSecundario
+            }
             value={titulo}
             onChangeText={setTitulo}
             editable={!guardando}
@@ -481,9 +609,13 @@ export default function FormPropiedad({
               styles.inputMultiline,
             ]}
             placeholder="Describe la propiedad..."
-            placeholderTextColor={colores.textoSecundario}
+            placeholderTextColor={
+              colores.textoSecundario
+            }
             value={descripcion}
-            onChangeText={setDescripcion}
+            onChangeText={
+              setDescripcion
+            }
             multiline
             editable={!guardando}
           />
@@ -492,31 +624,44 @@ export default function FormPropiedad({
             Tipo de propiedad
           </Text>
 
-          <View style={styles.tiposContainer}>
-            {TIPOS.map(tipoActual => (
-              <TouchableOpacity
-                key={tipoActual}
-                style={[
-                  styles.tipoBtn,
-                  tipo === tipoActual &&
-                    styles.tipoActivo,
-                ]}
-                onPress={() =>
-                  setTipo(tipoActual)
-                }
-                disabled={guardando}
-              >
-                <Text
+          <View
+            style={
+              styles.tiposContainer
+            }
+          >
+            {TIPOS.map(
+              (tipoActual) => (
+                <TouchableOpacity
+                  key={tipoActual}
                   style={[
-                    styles.tipoTexto,
-                    tipo === tipoActual &&
-                      styles.tipoTextoActivo,
+                    styles.tipoBtn,
+
+                    tipo ===
+                      tipoActual &&
+                      styles.tipoActivo,
                   ]}
+                  onPress={() =>
+                    setTipo(
+                      tipoActual
+                    )
+                  }
+                  disabled={guardando}
                 >
-                  {tipoActual}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    style={[
+                      styles.tipoTexto,
+
+                      tipo ===
+                        tipoActual &&
+                        styles
+                          .tipoTextoActivo,
+                    ]}
+                  >
+                    {tipoActual}
+                  </Text>
+                </TouchableOpacity>
+              )
+            )}
           </View>
 
           <Text style={styles.label}>
@@ -526,7 +671,9 @@ export default function FormPropiedad({
           <TextInput
             style={styles.input}
             placeholder="Ej: 8000"
-            placeholderTextColor={colores.textoSecundario}
+            placeholderTextColor={
+              colores.textoSecundario
+            }
             value={precio}
             onChangeText={setPrecio}
             keyboardType="decimal-pad"
@@ -540,9 +687,13 @@ export default function FormPropiedad({
           <TextInput
             style={styles.input}
             placeholder="Ej: Col. Las Palmas, Casa 12"
-            placeholderTextColor={colores.textoSecundario}
+            placeholderTextColor={
+              colores.textoSecundario
+            }
             value={direccion}
-            onChangeText={setDireccion}
+            onChangeText={
+              setDireccion
+            }
             editable={!guardando}
           />
 
@@ -553,9 +704,13 @@ export default function FormPropiedad({
           <TextInput
             style={styles.input}
             placeholder="Ej: 3"
-            placeholderTextColor={colores.textoSecundario}
+            placeholderTextColor={
+              colores.textoSecundario
+            }
             value={habitaciones}
-            onChangeText={setHabitaciones}
+            onChangeText={
+              setHabitaciones
+            }
             keyboardType="number-pad"
             editable={!guardando}
           />
@@ -567,7 +722,9 @@ export default function FormPropiedad({
           <TextInput
             style={styles.input}
             placeholder="Ej: 2"
-            placeholderTextColor={colores.textoSecundario}
+            placeholderTextColor={
+              colores.textoSecundario
+            }
             value={banos}
             onChangeText={setBanos}
             keyboardType="number-pad"
@@ -576,38 +733,55 @@ export default function FormPropiedad({
         </View>
 
         <View style={styles.seccion}>
-          <Text style={styles.seccionTitulo}>
+          <Text
+            style={
+              styles.seccionTitulo
+            }
+          >
             📷 Foto de la propiedad
           </Text>
 
           <TouchableOpacity
             style={styles.fotoBtn}
-            onPress={tomarFoto}
+            onPress={seleccionarFoto}
             disabled={guardando}
           >
-            <Text style={styles.fotoBtnIcono}>
-              {foto ? '✅' : '📷'}
+            <Text
+              style={
+                styles.fotoBtnIcono
+              }
+            >
+              {foto ? "✅" : "📷"}
             </Text>
 
-            <Text style={styles.fotoBtnTexto}>
+            <Text
+              style={
+                styles.fotoBtnTexto
+              }
+            >
               {foto
-                ? 'Foto seleccionada'
+                ? "Foto seleccionada"
                 : editando &&
                     propExistente?.foto_ruta
-                  ? 'Cambiar fotografía'
-                  : 'Tomar foto'}
+                  ? "Cambiar fotografía"
+                  : "Seleccionar fotografía"}
             </Text>
 
-            <Text style={styles.fotoBtnSub}>
-              Abre la cámara del dispositivo
+            <Text
+              style={styles.fotoBtnSub}
+            >
+              Elige entre cámara o
+              galería
             </Text>
           </TouchableOpacity>
 
           {foto?.uri ? (
             <Image
-              source={{ uri: foto.uri }}
+              source={{
+                uri: foto.uri,
+              }}
               style={{
-                width: '100%',
+                width: "100%",
                 height: 200,
                 borderRadius: 14,
                 marginTop: 14,
@@ -618,36 +792,24 @@ export default function FormPropiedad({
         </View>
 
         <View style={styles.seccion}>
-          <Text style={styles.seccionTitulo}>
-            📍 Ubicación GPS
+          <Text
+            style={
+              styles.seccionTitulo
+            }
+          >
+            📍 Ubicación de la propiedad
           </Text>
 
-          <TouchableOpacity
-            style={styles.mapaPlaceholder}
-            onPress={obtenerUbicacion}
-            disabled={guardando}
-          >
-            <Text style={styles.mapaIcono}>
-              {ubicacion ? '✅' : '🗺️'}
-            </Text>
-
-            <Text style={styles.mapaTexto}>
-              {ubicacion
-                ? 'Ubicación guardada'
-                : 'Obtener ubicación actual'}
-            </Text>
-
-            <Text style={styles.mapaSub}>
-              Toca para usar el GPS
-            </Text>
-          </TouchableOpacity>
-
-          {ubicacion ? (
-            <Text style={styles.coordTexto}>
-              📍 {ubicacion.latitude.toFixed(5)}
-              , {ubicacion.longitude.toFixed(5)}
-            </Text>
-          ) : null}
+          <SelectorMapa
+            ubicacion={ubicacion}
+            onSeleccionar={
+              setUbicacion
+            }
+            colores={colores}
+            deshabilitado={
+              guardando
+            }
+          />
         </View>
 
         <TouchableOpacity
@@ -657,14 +819,20 @@ export default function FormPropiedad({
         >
           {guardando ? (
             <ActivityIndicator
-              color={colores.primarioTexto}
+              color={
+                colores.primarioTexto
+              }
             />
           ) : (
-            <Text style={styles.btnGuardarTexto}>
-              💾{' '}
+            <Text
+              style={
+                styles.btnGuardarTexto
+              }
+            >
+              💾{" "}
               {editando
-                ? 'Actualizar propiedad'
-                : 'Guardar propiedad'}
+                ? "Actualizar propiedad"
+                : "Guardar propiedad"}
             </Text>
           )}
         </TouchableOpacity>
@@ -677,26 +845,34 @@ const crearStyles = (colores) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colores.fondo,
+      backgroundColor:
+        colores.fondo,
     },
 
     header: {
-      backgroundColor: colores.primario,
+      backgroundColor:
+        colores.primario,
+
       paddingTop: 55,
       paddingBottom: 20,
       paddingHorizontal: 20,
+
       borderBottomLeftRadius: 24,
       borderBottomRightRadius: 24,
     },
 
     headerTitulo: {
-      color: colores.primarioTexto,
+      color:
+        colores.primarioTexto,
+
       fontSize: 20,
-      fontWeight: 'bold',
+      fontWeight: "bold",
     },
 
     headerSub: {
-      color: colores.primarioTexto,
+      color:
+        colores.primarioTexto,
+
       fontSize: 13,
       marginTop: 4,
       opacity: 0.9,
@@ -708,50 +884,64 @@ const crearStyles = (colores) =>
     },
 
     seccion: {
-      backgroundColor: colores.tarjeta,
+      backgroundColor:
+        colores.tarjeta,
+
       borderRadius: 16,
       borderWidth: 1,
       borderColor: colores.borde,
+
       padding: 18,
       marginBottom: 16,
+
       boxShadow:
-        '0px 2px 8px rgba(15, 23, 42, 0.08)',
+        "0px 2px 8px rgba(15, 23, 42, 0.08)",
+
       elevation: 2,
     },
 
     seccionTitulo: {
       fontSize: 15,
-      fontWeight: 'bold',
+      fontWeight: "bold",
       color: colores.primario,
       marginBottom: 14,
     },
 
     label: {
       fontSize: 14,
-      fontWeight: '600',
-      color: colores.textoPrincipal,
+      fontWeight: "600",
+
+      color:
+        colores.textoPrincipal,
+
       marginBottom: 6,
     },
 
     input: {
-      backgroundColor: colores.campo,
+      backgroundColor:
+        colores.campo,
+
       borderWidth: 1.5,
       borderColor: colores.borde,
       borderRadius: 8,
+
       padding: 12,
       fontSize: 15,
-      color: colores.textoPrincipal,
+
+      color:
+        colores.textoPrincipal,
+
       marginBottom: 14,
     },
 
     inputMultiline: {
       height: 90,
-      textAlignVertical: 'top',
+      textAlignVertical: "top",
     },
 
     tiposContainer: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
+      flexDirection: "row",
+      flexWrap: "wrap",
       gap: 8,
       marginBottom: 14,
     },
@@ -759,21 +949,29 @@ const crearStyles = (colores) =>
     tipoBtn: {
       paddingHorizontal: 14,
       paddingVertical: 8,
+
       borderRadius: 20,
       borderWidth: 1.5,
       borderColor: colores.borde,
-      backgroundColor: colores.campo,
+
+      backgroundColor:
+        colores.campo,
     },
 
     tipoActivo: {
-      borderColor: colores.primario,
-      backgroundColor: colores.primarioClaro,
+      borderColor:
+        colores.primario,
+
+      backgroundColor:
+        colores.primarioClaro,
     },
 
     tipoTexto: {
-      color: colores.textoSecundario,
+      color:
+        colores.textoSecundario,
+
       fontSize: 13,
-      fontWeight: '600',
+      fontWeight: "600",
     },
 
     tipoTextoActivo: {
@@ -781,13 +979,17 @@ const crearStyles = (colores) =>
     },
 
     fotoBtn: {
-      backgroundColor: colores.primarioClaro,
+      backgroundColor:
+        colores.primarioClaro,
+
       borderRadius: 12,
       padding: 20,
-      alignItems: 'center',
+      alignItems: "center",
+
       borderWidth: 2,
       borderColor: colores.primario,
-      borderStyle: 'dashed',
+      borderStyle: "dashed",
+
       marginBottom: 14,
     },
 
@@ -798,66 +1000,38 @@ const crearStyles = (colores) =>
 
     fotoBtnTexto: {
       color: colores.primario,
-      fontWeight: '600',
+      fontWeight: "600",
       fontSize: 15,
     },
 
     fotoBtnSub: {
-      color: colores.textoSecundario,
+      color:
+        colores.textoSecundario,
+
       fontSize: 12,
       marginTop: 2,
-    },
-
-    mapaPlaceholder: {
-      backgroundColor: colores.primarioClaro,
-      borderRadius: 12,
-      height: 140,
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderWidth: 2,
-      borderColor: colores.primario,
-      borderStyle: 'dashed',
-    },
-
-    mapaIcono: {
-      fontSize: 36,
-      marginBottom: 6,
-    },
-
-    mapaTexto: {
-      color: colores.primario,
-      fontWeight: '600',
-      fontSize: 15,
-    },
-
-    mapaSub: {
-      color: colores.textoSecundario,
-      fontSize: 12,
-      marginTop: 2,
-    },
-
-    coordTexto: {
-      color: colores.exito,
-      fontSize: 13,
-      marginTop: 8,
-      textAlign: 'center',
-      fontWeight: '600',
     },
 
     btnGuardar: {
-      backgroundColor: colores.primario,
+      backgroundColor:
+        colores.primario,
+
       padding: 17,
       borderRadius: 12,
-      alignItems: 'center',
+      alignItems: "center",
       marginBottom: 30,
+
       boxShadow:
-        '0px 2px 8px rgba(15, 23, 42, 0.08)',
+        "0px 2px 8px rgba(15, 23, 42, 0.08)",
+
       elevation: 2,
     },
 
     btnGuardarTexto: {
-      color: colores.primarioTexto,
-      fontWeight: 'bold',
+      color:
+        colores.primarioTexto,
+
+      fontWeight: "bold",
       fontSize: 17,
     },
   });

@@ -186,6 +186,41 @@ export default function CrearContrato({ route, navigation }) {
     );
   };
 
+  const mostrarContratoExistente = (
+  mensaje
+) => {
+  setError("");
+
+  const texto =
+    mensaje ||
+    "Esta solicitud ya tiene un contrato.";
+
+  if (
+    Platform.OS === "web" &&
+    typeof window !== "undefined"
+  ) {
+    window.alert(texto);
+    navigation.goBack();
+
+    return;
+  }
+
+  Alert.alert(
+    "Contrato existente",
+    texto,
+    [
+      {
+        text: "Aceptar",
+        onPress: () =>
+          navigation.goBack(),
+      },
+    ],
+    {
+      cancelable: false,
+    }
+  );
+};
+
   const crearContrato = async () => {
     setError('');
 
@@ -283,12 +318,29 @@ export default function CrearContrato({ route, navigation }) {
         datos.success === true;
 
       if (!respuesta.ok || !fueExitoso) {
-        throw new Error(
-          datos.mensaje ||
-            datos.message ||
-            'No se pudo crear el contrato.'
-        );
-      }
+     const mensajeRespuesta =
+    datos.mensaje ||
+    datos.message ||
+    "No se pudo crear el contrato.";
+
+  if (
+    mensajeRespuesta
+      .toLowerCase()
+      .includes(
+        "ya tiene un contrato"
+      )
+  ) {
+    mostrarContratoExistente(
+      mensajeRespuesta
+    );
+
+    return;
+  }
+
+  throw new Error(
+    mensajeRespuesta
+  );
+}
 
       mostrarExito(
         'El contrato se creó correctamente.'

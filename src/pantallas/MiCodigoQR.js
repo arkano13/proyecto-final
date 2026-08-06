@@ -1,4 +1,6 @@
-import React from 'react';
+import React, {
+  useState,
+} from "react";
 
 import {
   View,
@@ -6,134 +8,374 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-} from 'react-native';
+  ActivityIndicator,
+  Alert,
+  Platform,
+} from "react-native";
 
-import { Ionicons } from '@expo/vector-icons';
-import QRCode from 'react-native-qrcode-svg';
+import {
+  Ionicons,
+} from "@expo/vector-icons";
 
-import { useTema } from '../context/TemaContext';
-import { RADIO, SOMBRA } from '../estilos/globales';
+import {
+  API_URLS,
+} from "../config/config";
+
+import {
+  useTema,
+} from "../context/TemaContext";
 
 export default function MiCodigoQR({
   route,
   navigation,
 }) {
   const { colores } = useTema();
-  const styles = crearStyles(colores);
 
-  const usuario = route?.params?.usuario;
+  const styles =
+    crearStyles(colores);
 
-  const qrToken = String(
-    usuario?.qr_token ||
-      usuario?.usuario_qr_token ||
-      ''
+  const usuario =
+    route?.params?.usuario;
+
+  const correo = String(
+    usuario?.correo ||
+      usuario?.usuario_correo ||
+      ""
   ).trim();
 
+  const [
+    enviando,
+    setEnviando,
+  ] = useState(false);
+
+  const [error, setError] =
+    useState("");
+
+  const leerRespuesta = async (
+    respuesta
+  ) => {
+    const texto =
+      await respuesta.text();
+
+    try {
+      return JSON.parse(texto);
+    } catch (errorJson) {
+      console.log(
+        "Respuesta al enviar QR:",
+        texto
+      );
+
+      throw new Error(
+        "El servidor respondió incorrectamente."
+      );
+    }
+  };
+
+  const mostrarExito = (
+    mensaje
+  ) => {
+    if (
+      Platform.OS === "web" &&
+      typeof window !==
+        "undefined"
+    ) {
+      window.alert(mensaje);
+
+      return;
+    }
+
+    Alert.alert(
+      "Correo enviado",
+      mensaje
+    );
+  };
+
+  const enviarCodigo =
+    async () => {
+      if (!correo) {
+        setError(
+          "Tu cuenta no tiene un correo registrado."
+        );
+
+        return;
+      }
+
+      setError("");
+      setEnviando(true);
+
+      try {
+        const respuesta =
+          await fetch(
+            API_URLS
+              .SOLICITAR_LOGIN_QR,
+            {
+              method: "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+
+                Accept:
+                  "application/json",
+              },
+
+              body: JSON.stringify({
+                correo,
+              }),
+            }
+          );
+
+        const datos =
+          await leerRespuesta(
+            respuesta
+          );
+
+        if (
+          !respuesta.ok ||
+          (!datos.exito &&
+            !datos.success)
+        ) {
+          throw new Error(
+            datos.mensaje ||
+              datos.message ||
+              "No se pudo enviar el código."
+          );
+        }
+
+        mostrarExito(
+          datos.mensaje ||
+            "El QR y el PIN fueron enviados correctamente."
+        );
+      } catch (
+        errorPeticion
+      ) {
+        console.error(
+          "Error al enviar QR:",
+          errorPeticion
+        );
+
+        setError(
+          errorPeticion.message ||
+            "No se pudo enviar el código."
+        );
+      } finally {
+        setEnviando(false);
+      }
+    };
+
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+    >
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.btnVolver}
-          onPress={() => navigation.goBack()}
+          onPress={() =>
+            navigation.goBack()
+          }
         >
           <Ionicons
             name="arrow-back"
             size={24}
-            color={colores.textoPrincipal}
+            color={
+              colores.textoPrincipal
+            }
           />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitulo}>
-          Mi código QR
+        <Text
+          style={
+            styles.headerTitulo
+          }
+        >
+          Acceso con QR
         </Text>
 
-        <View style={styles.espacioHeader} />
+        <View
+          style={
+            styles.espacioHeader
+          }
+        />
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.contenido}
-        showsVerticalScrollIndicator={false}
+        contentContainerStyle={
+          styles.contenido
+        }
+        showsVerticalScrollIndicator={
+          false
+        }
       >
-        <View style={styles.iconoCirculo}>
+        <View
+          style={
+            styles.iconoCirculo
+          }
+        >
           <Ionicons
             name="qr-code-outline"
-            size={44}
-            color={colores.primario}
+            size={50}
+            color={
+              colores.primario
+            }
           />
         </View>
 
-        <Text style={styles.titulo}>
-          Código de acceso
+        <Text
+          style={styles.titulo}
+        >
+          Solicitar código de acceso
         </Text>
 
-        <Text style={styles.descripcion}>
-          Escanea este código desde la pantalla de
-          inicio de sesión para entrar a tu cuenta.
+        <Text
+          style={
+            styles.descripcion
+          }
+        >
+          Enviaremos un código QR y
+          un PIN de 4 números al
+          correo de tu cuenta.
         </Text>
 
-        {qrToken ? (
-          <View style={styles.tarjetaQr}>
-            <View style={styles.fondoQr}>
-              <QRCode
-                value={qrToken}
-                size={230}
-                color="#111827"
-                backgroundColor="#ffffff"
-              />
-            </View>
-
-            <View style={styles.usuarioFila}>
-              <Ionicons
-                name="person-circle-outline"
-                size={22}
-                color={colores.primario}
-              />
-
-              <Text style={styles.usuarioTexto}>
-                {usuario?.nombre_completo ||
-                  usuario?.usuario ||
-                  'Usuario'}
-              </Text>
-            </View>
-          </View>
-        ) : (
-          <View style={styles.tarjetaError}>
-            <Ionicons
-              name="alert-circle-outline"
-              size={34}
-              color={colores.advertencia}
-            />
-
-            <Text style={styles.errorTitulo}>
-              Código no disponible
-            </Text>
-
-            <Text style={styles.errorTexto}>
-              Cierra sesión e inicia nuevamente con
-              tu correo y contraseña para generar el
-              código QR.
-            </Text>
-          </View>
-        )}
-
-        <View style={styles.aviso}>
+        <View
+          style={
+            styles.tarjetaCorreo
+          }
+        >
           <Ionicons
-            name="shield-checkmark-outline"
-            size={24}
-            color={colores.advertencia}
+            name="mail-outline"
+            size={23}
+            color={
+              colores.primario
+            }
           />
 
-          <Text style={styles.avisoTexto}>
-            Este código permite ingresar a tu cuenta.
-            No lo compartas con otras personas.
+          <View
+            style={
+              styles.correoTexto
+            }
+          >
+            <Text
+              style={
+                styles.correoLabel
+              }
+            >
+              Correo registrado
+            </Text>
+
+            <Text
+              style={
+                styles.correoValor
+              }
+            >
+              {correo ||
+                "Correo no disponible"}
+            </Text>
+          </View>
+        </View>
+
+        {error ? (
+          <View
+            style={
+              styles.errorCaja
+            }
+          >
+            <Ionicons
+              name="alert-circle-outline"
+              size={22}
+              color={
+                colores.peligro
+              }
+            />
+
+            <Text
+              style={
+                styles.errorTexto
+              }
+            >
+              {error}
+            </Text>
+          </View>
+        ) : null}
+
+        <TouchableOpacity
+          style={
+            styles.botonEnviar
+          }
+          onPress={
+            enviarCodigo
+          }
+          disabled={
+            enviando || !correo
+          }
+        >
+          {enviando ? (
+            <ActivityIndicator
+              color={
+                colores
+                  .primarioTexto
+              }
+            />
+          ) : (
+            <>
+              <Ionicons
+                name="send-outline"
+                size={21}
+                color={
+                  colores
+                    .primarioTexto
+                }
+              />
+
+              <Text
+                style={
+                  styles
+                    .textoBotonEnviar
+                }
+              >
+                Enviar QR y PIN
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+
+        <View
+          style={styles.aviso}
+        >
+          <Ionicons
+            name="time-outline"
+            size={23}
+            color={
+              colores.advertencia
+            }
+          />
+
+          <Text
+            style={
+              styles.avisoTexto
+            }
+          >
+            El QR y el PIN duran 15
+            minutos y dejan de
+            funcionar después de
+            iniciar sesión.
           </Text>
         </View>
 
         <TouchableOpacity
-          style={styles.btnCerrar}
-          onPress={() => navigation.goBack()}
+          style={
+            styles
+              .botonVolverPerfil
+          }
+          onPress={() =>
+            navigation.goBack()
+          }
         >
-          <Text style={styles.btnCerrarTexto}>
+          <Text
+            style={
+              styles
+                .textoVolverPerfil
+            }
+          >
             Volver al perfil
           </Text>
         </TouchableOpacity>
@@ -146,33 +388,47 @@ function crearStyles(colores) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colores.fondo,
+
+      backgroundColor:
+        colores.fondo,
     },
 
     header: {
       minHeight: 64,
       paddingHorizontal: 18,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      backgroundColor: colores.tarjeta,
+
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent:
+        "space-between",
+
+      backgroundColor:
+        colores.tarjeta,
+
       borderBottomWidth: 1,
-      borderBottomColor: colores.borde,
+
+      borderBottomColor:
+        colores.borde,
     },
 
     btnVolver: {
       width: 42,
       height: 42,
-      alignItems: 'center',
-      justifyContent: 'center',
       borderRadius: 21,
-      backgroundColor: colores.campo,
+
+      justifyContent: "center",
+      alignItems: "center",
+
+      backgroundColor:
+        colores.campo,
     },
 
     headerTitulo: {
+      color:
+        colores.textoPrincipal,
+
       fontSize: 19,
-      fontWeight: '800',
-      color: colores.textoPrincipal,
+      fontWeight: "bold",
     },
 
     espacioHeader: {
@@ -181,132 +437,171 @@ function crearStyles(colores) {
 
     contenido: {
       flexGrow: 1,
-      alignItems: 'center',
+      width: "100%",
+      maxWidth: 430,
+
+      alignSelf: "center",
+      alignItems: "center",
+
       paddingHorizontal: 22,
-      paddingTop: 32,
+      paddingTop: 38,
       paddingBottom: 40,
     },
 
     iconoCirculo: {
-      width: 78,
-      height: 78,
-      borderRadius: 39,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: colores.primarioClaro,
-      marginBottom: 16,
+      width: 88,
+      height: 88,
+      borderRadius: 44,
+
+      justifyContent: "center",
+      alignItems: "center",
+
+      backgroundColor:
+        colores.primarioClaro,
+
+      marginBottom: 18,
     },
 
     titulo: {
-      fontSize: 25,
-      fontWeight: '900',
-      color: colores.textoPrincipal,
-      textAlign: 'center',
+      color:
+        colores.textoPrincipal,
+
+      fontSize: 24,
+      fontWeight: "bold",
+      textAlign: "center",
     },
 
     descripcion: {
-      maxWidth: 360,
-      marginTop: 8,
+      marginTop: 9,
       marginBottom: 24,
+
+      color:
+        colores.textoSecundario,
+
       fontSize: 15,
       lineHeight: 22,
-      color: colores.textoSecundario,
-      textAlign: 'center',
+      textAlign: "center",
     },
 
-    tarjetaQr: {
-      width: '100%',
-      maxWidth: 350,
-      alignItems: 'center',
-      padding: 22,
-      borderRadius: RADIO,
-      backgroundColor: colores.tarjeta,
+    tarjetaCorreo: {
+      width: "100%",
+      padding: 16,
+      borderRadius: 12,
+
+      flexDirection: "row",
+      alignItems: "center",
+
+      backgroundColor:
+        colores.tarjeta,
+
       borderWidth: 1,
-      borderColor: colores.borde,
-      ...SOMBRA,
+      borderColor:
+        colores.borde,
     },
 
-    fondoQr: {
-      padding: 14,
-      borderRadius: 16,
-      backgroundColor: '#ffffff',
+    correoTexto: {
+      flex: 1,
+      marginLeft: 12,
     },
 
-    usuarioFila: {
-      marginTop: 18,
-      flexDirection: 'row',
-      alignItems: 'center',
+    correoLabel: {
+      color:
+        colores.textoSecundario,
+
+      fontSize: 12,
     },
 
-    usuarioTexto: {
-      flexShrink: 1,
-      marginLeft: 8,
-      fontSize: 16,
-      fontWeight: '700',
-      color: colores.textoPrincipal,
-      textAlign: 'center',
+    correoValor: {
+      marginTop: 2,
+
+      color:
+        colores.textoPrincipal,
+
+      fontSize: 15,
+      fontWeight: "600",
     },
 
-    tarjetaError: {
-      width: '100%',
-      maxWidth: 350,
-      alignItems: 'center',
-      padding: 24,
-      borderRadius: RADIO,
-      backgroundColor: colores.tarjeta,
-      borderWidth: 1,
-      borderColor: colores.borde,
-    },
+    errorCaja: {
+      width: "100%",
+      marginTop: 14,
+      padding: 13,
+      borderRadius: 10,
 
-    errorTitulo: {
-      marginTop: 10,
-      fontSize: 18,
-      fontWeight: '800',
-      color: colores.textoPrincipal,
+      flexDirection: "row",
+      alignItems: "center",
+
+      backgroundColor:
+        colores.peligroClaro,
     },
 
     errorTexto: {
-      marginTop: 8,
+      flex: 1,
+      marginLeft: 9,
+
+      color:
+        colores.peligro,
+
       fontSize: 14,
-      lineHeight: 21,
-      color: colores.textoSecundario,
-      textAlign: 'center',
+    },
+
+    botonEnviar: {
+      width: "100%",
+      minHeight: 52,
+      marginTop: 18,
+      borderRadius: 10,
+
+      flexDirection: "row",
+      gap: 8,
+
+      justifyContent: "center",
+      alignItems: "center",
+
+      backgroundColor:
+        colores.primario,
+    },
+
+    textoBotonEnviar: {
+      color:
+        colores.primarioTexto,
+
+      fontSize: 16,
+      fontWeight: "bold",
     },
 
     aviso: {
-      width: '100%',
-      maxWidth: 350,
-      marginTop: 20,
-      padding: 16,
-      flexDirection: 'row',
-      alignItems: 'center',
-      borderRadius: RADIO,
-      backgroundColor: colores.advertenciaClaro,
+      width: "100%",
+      marginTop: 18,
+      padding: 15,
+      borderRadius: 10,
+
+      flexDirection: "row",
+      alignItems: "center",
+
+      backgroundColor:
+        colores.advertenciaClaro,
     },
 
     avisoTexto: {
       flex: 1,
-      marginLeft: 11,
+      marginLeft: 10,
+
+      color:
+        colores.textoPrincipal,
+
       fontSize: 13,
       lineHeight: 19,
-      color: colores.textoPrincipal,
     },
 
-    btnCerrar: {
-      width: '100%',
-      maxWidth: 350,
-      minHeight: 50,
-      marginTop: 22,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderRadius: RADIO,
-      backgroundColor: colores.primario,
+    botonVolverPerfil: {
+      marginTop: 20,
+      padding: 10,
     },
 
-    btnCerrarTexto: {
-      fontSize: 16,
-      fontWeight: '800',
-      color: '#ffffff',
+    textoVolverPerfil: {
+      color:
+        colores.primario,
+
+      fontWeight: "600",
     },
   });
 }
