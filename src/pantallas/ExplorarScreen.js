@@ -19,10 +19,10 @@ import {
 } from '@react-navigation/native';
 
 import {
-  COLORES,
   SOMBRA,
   RADIO,
 } from '../estilos/globales';
+import { useTema } from '../context/TemaContext';
 
 import {
   API_BASE_URL,
@@ -81,6 +81,9 @@ export default function ExplorarScreen({
   navigation,
   route,
 }) {
+  const { colores } = useTema();
+  const s = crearStyles(colores);
+
   const usuario = route.params?.usuario;
 
   const [propiedades, setPropiedades] =
@@ -185,7 +188,7 @@ export default function ExplorarScreen({
       <View style={s.centrado}>
         <ActivityIndicator
           size="large"
-          color={COLORES.primario}
+          color={colores.primario}
         />
 
         <Text style={s.cargandoTexto}>
@@ -228,7 +231,7 @@ export default function ExplorarScreen({
         <TextInput
           style={s.buscador}
           placeholder="Buscar por nombre o dirección..."
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor={colores.textoSecundario}
           value={busqueda}
           onChangeText={setBusqueda}
         />
@@ -415,45 +418,46 @@ export default function ExplorarScreen({
   );
 }
 
-const s = StyleSheet.create({
+const crearStyles = (colores) =>
+  StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: colores.fondo,
   },
 
   centrado: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORES.fondo,
+    backgroundColor: colores.fondo,
     padding: 24,
   },
 
   cargandoTexto: {
     marginTop: 12,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
   },
 
   errorTexto: {
-    color: COLORES.peligro,
+    color: colores.peligro,
     textAlign: 'center',
     marginBottom: 16,
   },
 
   btnReintentar: {
-    backgroundColor: COLORES.primario,
+    backgroundColor: colores.primario,
     paddingHorizontal: 20,
     paddingVertical: 11,
     borderRadius: RADIO.sm,
   },
 
   btnReintentarTexto: {
-    color: '#ffffff',
+    color: colores.primarioTexto,
     fontWeight: 'bold',
   },
 
   header: {
-    backgroundColor: COLORES.primario,
+    backgroundColor: colores.primario,
     paddingTop: 55,
     paddingBottom: 20,
     paddingHorizontal: 20,
@@ -462,25 +466,26 @@ const s = StyleSheet.create({
   },
 
   headerTitulo: {
-    color: '#ffffff',
+    color: colores.primarioTexto,
     fontSize: 22,
     fontWeight: 'bold',
   },
 
   headerSub: {
-    color: COLORES.primarioClaro,
+    color: colores.primarioTexto,
     fontSize: 13,
     marginTop: 2,
     marginBottom: 14,
+    opacity: 0.9,
   },
 
   buscador: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colores.campo,
     borderRadius: RADIO.md,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 15,
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   filtrosScroll: {
@@ -497,24 +502,24 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 7,
     borderRadius: 20,
-    backgroundColor: COLORES.fondoTarjeta,
+    backgroundColor: colores.tarjeta,
     borderWidth: 1.5,
-    borderColor: COLORES.borde,
+    borderColor: colores.borde,
   },
 
   filtroActivo: {
-    backgroundColor: COLORES.primario,
-    borderColor: COLORES.primario,
+    backgroundColor: colores.primario,
+    borderColor: colores.primario,
   },
 
   filtroTexto: {
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
     fontWeight: '600',
     fontSize: 13,
   },
 
   filtroTextoActivo: {
-    color: '#ffffff',
+    color: colores.primarioTexto,
   },
 
   lista: {
@@ -524,7 +529,7 @@ const s = StyleSheet.create({
 
   resultados: {
     fontSize: 13,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
     marginBottom: 4,
   },
 
@@ -540,18 +545,18 @@ const s = StyleSheet.create({
   vacioTitulo: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
     marginTop: 12,
   },
 
   vacioTexto: {
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
     marginTop: 6,
     textAlign: 'center',
   },
 
   tarjeta: {
-    backgroundColor: COLORES.fondoTarjeta,
+    backgroundColor: colores.tarjeta,
     borderRadius: RADIO.lg,
     overflow: 'hidden',
     ...SOMBRA,
@@ -559,7 +564,7 @@ const s = StyleSheet.create({
 
   tarjetaImagen: {
     height: 150,
-    backgroundColor: COLORES.primarioClaro,
+    backgroundColor: colores.primarioClaro,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -577,14 +582,14 @@ const s = StyleSheet.create({
     position: 'absolute',
     top: 12,
     left: 12,
-    backgroundColor: COLORES.primario,
+    backgroundColor: colores.primario,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
   },
 
   tarjetaTipoBadgeTexto: {
-    color: '#ffffff',
+    color: colores.primarioTexto,
     fontSize: 11,
     fontWeight: 'bold',
   },
@@ -596,12 +601,12 @@ const s = StyleSheet.create({
   tarjetaTitulo: {
     fontSize: 17,
     fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   tarjetaDireccion: {
     fontSize: 13,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
     marginTop: 4,
   },
 
@@ -613,7 +618,7 @@ const s = StyleSheet.create({
 
   detalle: {
     fontSize: 13,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
   },
 
   tarjetaFooter: {
@@ -626,24 +631,24 @@ const s = StyleSheet.create({
   precio: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: COLORES.primario,
+    color: colores.primario,
   },
 
   precioSub: {
     fontSize: 13,
     fontWeight: 'normal',
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
   },
 
   btnVer: {
-    backgroundColor: COLORES.primario,
+    backgroundColor: colores.primario,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: RADIO.sm,
   },
 
   btnVerTexto: {
-    color: '#ffffff',
+    color: colores.primarioTexto,
     fontWeight: 'bold',
     fontSize: 14,
   },

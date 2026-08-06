@@ -2,6 +2,7 @@ import React, {
   useCallback,
   useState,
 } from 'react';
+
 import {
   View,
   Text,
@@ -10,125 +11,160 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Image,
+  Platform,
+  Alert,
 } from 'react-native';
+
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
-import { API_BASE_URL, API_URLS } from '../config/config';
+import * as Calendar from 'expo-calendar';
+
 import {
-  COLORES,
-  RADIO,
-} from '../estilos/globales';
+  API_BASE_URL,
+  API_URLS,
+} from '../config/config';
+
+import { RADIO } from '../estilos/globales';
+import { useTema } from '../context/TemaContext';
+import useActualizacionAutomatica from '../hooks/useActualizacionAutomatica';
 
 export default function MiContrato({
   route,
   navigation,
 }) {
+  const { colores } = useTema();
+  const styles = crearStyles(colores);
+
   const usuario = route?.params?.usuario;
 
-  const [contratos, setContratos] = useState([]);
-  const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState('');
+  const [contratos, setContratos] =
+    useState([]);
 
-  const obtenerInquilinoId = useCallback(() => {
-    return Number(
-      usuario?.id ||
-        usuario?.usuario_id ||
-        0
-    );
-  }, [usuario]);
+  const [cargando, setCargando] =
+    useState(true);
 
-  const cargarContratos = useCallback(async () => {
-    const inquilinoId = obtenerInquilinoId();
+  const [error, setError] =
+    useState('');
 
-    if (!inquilinoId) {
-      setContratos([]);
-      setError(
-        'No se pudo identificar al usuario.'
+  const obtenerInquilinoId =
+    useCallback(() => {
+      return Number(
+        usuario?.id ||
+          usuario?.usuario_id ||
+          0
       );
-      setCargando(false);
-      return;
-    }
+    }, [usuario]);
 
-    try {
-      setCargando(true);
-      setError('');
+  const cargarContratos =
+    useCallback(async (
+      mostrarCarga = true
+    ) => {
+      const inquilinoId =
+        obtenerInquilinoId();
 
-      const respuesta = await fetch(
-        API_URLS.LISTAR_CONTRATOS_INQUILINO,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-          body: JSON.stringify({
-            inquilino_id: inquilinoId,
-          }),
-        }
-      );
+      if (!inquilinoId) {
+        setContratos([]);
 
-      const textoRespuesta =
-        await respuesta.text();
+        setError(
+          'No se pudo identificar al usuario.'
+        );
 
-      let datos;
+        setCargando(false);
+        return;
+      }
 
       try {
-        datos = JSON.parse(textoRespuesta);
-      } catch (errorJson) {
-        console.log(
-          'Respuesta de contratos:',
-          textoRespuesta
+        if (mostrarCarga) {
+          setCargando(true);
+        }
+        setError('');
+
+        const respuesta = await fetch(
+          API_URLS
+            .LISTAR_CONTRATOS_INQUILINO,
+          {
+            method: 'POST',
+
+            headers: {
+              'Content-Type':
+                'application/json',
+
+              Accept: 'application/json',
+            },
+
+            body: JSON.stringify({
+              inquilino_id:
+                inquilinoId,
+            }),
+          }
         );
 
-        throw new Error(
-          'El servidor no devolvió una respuesta válida.'
+        const textoRespuesta =
+          await respuesta.text();
+
+        let datos;
+
+        try {
+          datos = JSON.parse(
+            textoRespuesta
+          );
+        } catch (errorJson) {
+          console.log(
+            'Respuesta de contratos:',
+            textoRespuesta
+          );
+
+          throw new Error(
+            'El servidor no devolvió una respuesta válida.'
+          );
+        }
+
+        if (
+          !respuesta.ok ||
+          datos.exito === false ||
+          datos.success === false
+        ) {
+          throw new Error(
+            datos.mensaje ||
+              datos.message ||
+              'No se pudieron cargar los contratos.'
+          );
+        }
+
+        let lista = [];
+
+        if (Array.isArray(datos)) {
+          lista = datos;
+        } else if (
+          Array.isArray(datos.contratos)
+        ) {
+          lista = datos.contratos;
+        } else if (
+          Array.isArray(datos.data)
+        ) {
+          lista = datos.data;
+        }
+
+        setContratos(lista);
+      } catch (errorPeticion) {
+        console.error(
+          'Error al cargar contratos:',
+          errorPeticion
         );
-      }
 
-      if (
-        !respuesta.ok ||
-        datos.exito === false ||
-        datos.success === false
-      ) {
-        throw new Error(
-          datos.mensaje ||
-            datos.message ||
-            'No se pudieron cargar los contratos.'
+        setContratos([]);
+
+        setError(
+          errorPeticion.message ||
+            'Ocurrió un error al cargar el contrato.'
         );
+      } finally {
+        setCargando(false);
       }
+    }, [obtenerInquilinoId]);
 
-      let lista = [];
-
-      if (Array.isArray(datos)) {
-        lista = datos;
-      } else if (Array.isArray(datos.contratos)) {
-        lista = datos.contratos;
-      } else if (Array.isArray(datos.data)) {
-        lista = datos.data;
-      }
-
-      setContratos(lista);
-    } catch (errorPeticion) {
-      console.error(
-        'Error al cargar contratos:',
-        errorPeticion
-      );
-
-      setContratos([]);
-
-      setError(
-        errorPeticion.message ||
-          'Ocurrió un error al cargar el contrato.'
-      );
-    } finally {
-      setCargando(false);
-    }
-  }, [obtenerInquilinoId]);
-
-  useFocusEffect(
-    useCallback(() => {
-      cargarContratos();
-    }, [cargarContratos])
+  useActualizacionAutomatica(
+    cargarContratos,
+    20
   );
 
   const obtenerEstado = (contrato) => {
@@ -164,11 +200,16 @@ export default function MiContrato({
     }
 
     const fechaObjeto = new Date(
-      `${String(fecha).substring(0, 10)}T00:00:00`
+      `${String(fecha).substring(
+        0,
+        10
+      )}T00:00:00`
     );
 
     if (
-      Number.isNaN(fechaObjeto.getTime())
+      Number.isNaN(
+        fechaObjeto.getTime()
+      )
     ) {
       return null;
     }
@@ -177,10 +218,13 @@ export default function MiContrato({
   };
 
   const mostrarFecha = (fecha) => {
-    const fechaObjeto = convertirFecha(fecha);
+    const fechaObjeto =
+      convertirFecha(fecha);
 
     if (!fechaObjeto) {
-      return fecha || 'No disponible';
+      return (
+        fecha || 'No disponible'
+      );
     }
 
     return fechaObjeto.toLocaleDateString(
@@ -193,9 +237,14 @@ export default function MiContrato({
     );
   };
 
-  const obtenerProgreso = (contrato) => {
+  const obtenerProgreso = (
+    contrato
+  ) => {
     const inicio = convertirFecha(
-      obtenerFecha(contrato, 'inicio')
+      obtenerFecha(
+        contrato,
+        'inicio'
+      )
     );
 
     const fin = convertirFecha(
@@ -214,10 +263,12 @@ export default function MiContrato({
     ahora.setHours(0, 0, 0, 0);
 
     const totalMilisegundos =
-      fin.getTime() - inicio.getTime();
+      fin.getTime() -
+      inicio.getTime();
 
     const transcurrido =
-      ahora.getTime() - inicio.getTime();
+      ahora.getTime() -
+      inicio.getTime();
 
     const diaMilisegundos =
       1000 * 60 * 60 * 24;
@@ -225,7 +276,8 @@ export default function MiContrato({
     const diasRestantes = Math.max(
       0,
       Math.ceil(
-        (fin.getTime() - ahora.getTime()) /
+        (fin.getTime() -
+          ahora.getTime()) /
           diaMilisegundos
       )
     );
@@ -241,7 +293,8 @@ export default function MiContrato({
       100,
       Math.max(
         0,
-        (transcurrido / totalMilisegundos) *
+        (transcurrido /
+          totalMilisegundos) *
           100
       )
     );
@@ -255,12 +308,15 @@ export default function MiContrato({
   const obtenerMonto = (contrato) => {
     return Number(
       contrato?.monto_mensual ||
-        contrato?.contrato_monto_mensual ||
+        contrato
+          ?.contrato_monto_mensual ||
         0
     );
   };
 
-  const obtenerDeposito = (contrato) => {
+  const obtenerDeposito = (
+    contrato
+  ) => {
     return Number(
       contrato?.deposito ||
         contrato?.contrato_deposito ||
@@ -269,12 +325,17 @@ export default function MiContrato({
   };
 
   const mostrarDinero = (cantidad) => {
-    const numero = Number(cantidad || 0);
+    const numero = Number(
+      cantidad || 0
+    );
 
-    return numero.toLocaleString('es-HN', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+    return numero.toLocaleString(
+      'es-HN',
+      {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }
+    );
   };
 
   const obtenerTituloPropiedad = (
@@ -282,7 +343,8 @@ export default function MiContrato({
   ) => {
     return (
       contrato?.propiedad?.titulo ||
-      contrato?.propiedad?.propiedad_titulo ||
+      contrato?.propiedad
+        ?.propiedad_titulo ||
       contrato?.propiedad_titulo ||
       'Propiedad'
     );
@@ -304,7 +366,8 @@ export default function MiContrato({
     const ruta =
       contrato?.propiedad?.imagen ||
       contrato?.propiedad?.foto ||
-      contrato?.propiedad?.imagen_ruta ||
+      contrato?.propiedad
+        ?.imagen_ruta ||
       contrato?.propiedad
         ?.propiedad_img_ruta ||
       contrato?.propiedad_imagen ||
@@ -315,14 +378,21 @@ export default function MiContrato({
     }
 
     if (
-      String(ruta).startsWith('http://') ||
-      String(ruta).startsWith('https://')
+      String(ruta).startsWith(
+        'http://'
+      ) ||
+      String(ruta).startsWith(
+        'https://'
+      )
     ) {
       return String(ruta);
     }
 
     const rutaLimpia =
-      String(ruta).replace(/^\/+/, '');
+      String(ruta).replace(
+        /^\/+/,
+        ''
+      );
 
     return `${API_BASE_URL}/${rutaLimpia}`;
   };
@@ -364,39 +434,145 @@ export default function MiContrato({
     );
   };
 
-  const obtenerColorEstado = (estado) => {
+  const obtenerColorEstado = (
+    estado
+  ) => {
     if (estado === 'activo') {
       return {
-        fondo: COLORES.exitoClaro,
-        texto: COLORES.exito,
+        fondo: colores.exitoClaro,
+        texto: colores.exito,
         icono: 'checkmark-circle',
       };
     }
 
     if (estado === 'finalizado') {
       return {
-        fondo: '#dbeafe',
-        texto: '#2563eb',
+        fondo: colores.primarioClaro,
+        texto: colores.primario,
         icono: 'flag',
       };
     }
 
     return {
-      fondo: COLORES.peligroClaro,
-      texto: COLORES.peligro,
+      fondo: colores.peligroClaro,
+      texto: colores.peligro,
       icono: 'close-circle',
     };
   };
 
-  const contratoActivo = contratos.find(
-    (contrato) =>
-      obtenerEstado(contrato) === 'activo'
-  );
+  const agregarRecordatorioCalendario =
+    async (contrato) => {
+      if (Platform.OS === 'web') {
+        window.alert(
+          'El calendario debe probarse desde un teléfono Android o iPhone.'
+        );
+
+        return;
+      }
+
+      const fechaFin = convertirFecha(
+        obtenerFecha(
+          contrato,
+          'fin'
+        )
+      );
+
+      if (!fechaFin) {
+        Alert.alert(
+          'Fecha no disponible',
+          'El contrato no tiene una fecha de finalización válida.'
+        );
+
+        return;
+      }
+
+      fechaFin.setHours(
+        9,
+        0,
+        0,
+        0
+      );
+
+      const fechaFinalEvento =
+        new Date(
+          fechaFin.getTime() +
+            60 * 60 * 1000
+        );
+
+      try {
+        const resultado =
+          await Calendar
+            .createEventInCalendarAsync(
+              {
+                title:
+                  'Finalización de contrato - RentaFácil',
+
+                startDate: fechaFin,
+
+                endDate:
+                  fechaFinalEvento,
+
+                location:
+                  obtenerDireccionPropiedad(
+                    contrato
+                  ),
+
+                notes:
+                  'Finalización del contrato de ' +
+                  obtenerTituloPropiedad(
+                    contrato
+                  ) +
+                  '. Mensualidad: L ' +
+                  mostrarDinero(
+                    obtenerMonto(
+                      contrato
+                    )
+                  ) +
+                  '.',
+
+                alarms: [
+                  {
+                    relativeOffset:
+                      -1440,
+                  },
+                ],
+              }
+            );
+
+        if (
+          resultado?.action ===
+          'saved'
+        ) {
+          Alert.alert(
+            'Recordatorio guardado',
+            'El evento se agregó al calendario del dispositivo.'
+          );
+        }
+      } catch (errorCalendario) {
+        console.error(
+          'Error al abrir el calendario:',
+          errorCalendario
+        );
+
+        Alert.alert(
+          'No se pudo abrir el calendario',
+          'Verifica que el dispositivo tenga una aplicación de calendario.'
+        );
+      }
+    };
+
+  const contratoActivo =
+    contratos.find(
+      (contrato) =>
+        obtenerEstado(contrato) ===
+        'activo'
+    );
 
   const contratosAnteriores =
     contratos.filter(
       (contrato) =>
-        obtenerEstado(contrato) !== 'activo'
+        obtenerEstado(contrato) !==
+        'activo'
     );
 
   if (cargando) {
@@ -404,10 +580,12 @@ export default function MiContrato({
       <View style={styles.centro}>
         <ActivityIndicator
           size="large"
-          color={COLORES.primario}
+          color={colores.primario}
         />
 
-        <Text style={styles.textoCargando}>
+        <Text
+          style={styles.textoCargando}
+        >
           Cargando contrato...
         </Text>
       </View>
@@ -416,72 +594,110 @@ export default function MiContrato({
 
   return (
     <View style={styles.pantalla}>
-      <View style={styles.encabezado}>
-        <View style={styles.encabezadoSuperior}>
+      <View
+        style={styles.encabezado}
+      >
+        <View
+          style={
+            styles.encabezadoSuperior
+          }
+        >
           <TouchableOpacity
-            style={styles.botonEncabezado}
-            onPress={() => navigation.goBack()}
+            style={
+              styles.botonEncabezado
+            }
+            onPress={() =>
+              navigation.goBack()
+            }
           >
             <Ionicons
               name="arrow-back"
               size={24}
-              color="#ffffff"
+              color={
+                colores.primarioTexto
+              }
             />
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.botonEncabezado}
+            style={
+              styles.botonEncabezado
+            }
             onPress={cargarContratos}
           >
             <Ionicons
               name="refresh"
               size={23}
-              color="#ffffff"
+              color={
+                colores.primarioTexto
+              }
             />
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.tituloPantalla}>
+        <Text
+          style={styles.tituloPantalla}
+        >
           Mi contrato
         </Text>
 
-        <Text style={styles.subtituloPantalla}>
+        <Text
+          style={
+            styles.subtituloPantalla
+          }
+        >
           Información de tu alquiler
         </Text>
       </View>
 
       {error !== '' ? (
-        <View style={styles.estadoPantalla}>
+        <View
+          style={styles.estadoPantalla}
+        >
           <Ionicons
             name="alert-circle-outline"
             size={55}
-            color={COLORES.peligro}
+            color={colores.peligro}
           />
 
-          <Text style={styles.errorTexto}>
+          <Text
+            style={styles.errorTexto}
+          >
             {error}
           </Text>
 
           <TouchableOpacity
-            style={styles.botonReintentar}
+            style={
+              styles.botonReintentar
+            }
             onPress={cargarContratos}
           >
             <Text
-              style={styles.textoReintentar}
+              style={
+                styles.textoReintentar
+              }
             >
               Volver a intentar
             </Text>
           </TouchableOpacity>
         </View>
       ) : !contratoActivo ? (
-        <View style={styles.estadoPantalla}>
+        <View
+          style={styles.estadoPantalla}
+        >
           <Ionicons
             name="document-text-outline"
             size={70}
-            color={COLORES.textoClaro}
+            color={
+              colores.textoSecundario
+            }
           />
 
-          <Text style={styles.sinContratoTitulo}>
+          <Text
+            style={
+              styles.sinContratoTitulo
+            }
+          >
             No tienes un contrato activo
           </Text>
 
@@ -490,28 +706,36 @@ export default function MiContrato({
               styles.sinContratoDescripcion
             }
           >
-            Cuando el arrendador cree tu contrato,
-            aparecerá en esta pantalla.
+            Cuando el arrendador cree tu
+            contrato, aparecerá en esta
+            pantalla.
           </Text>
 
           <TouchableOpacity
-            style={styles.botonReintentar}
+            style={
+              styles.botonReintentar
+            }
             onPress={cargarContratos}
           >
             <Ionicons
               name="refresh-outline"
               size={19}
-              color="#ffffff"
+              color={
+                colores.primarioTexto
+              }
             />
 
             <Text
-              style={styles.textoReintentar}
+              style={
+                styles.textoReintentar
+              }
             >
               Actualizar
             </Text>
           </TouchableOpacity>
 
-          {contratosAnteriores.length > 0 && (
+          {contratosAnteriores.length >
+            0 && (
             <View
               style={
                 styles.historialResumen
@@ -523,8 +747,11 @@ export default function MiContrato({
                 }
               >
                 Tienes{' '}
-                {contratosAnteriores.length}{' '}
-                {contratosAnteriores.length === 1
+                {
+                  contratosAnteriores.length
+                }{' '}
+                {contratosAnteriores.length ===
+                1
                   ? 'contrato anterior'
                   : 'contratos anteriores'}
                 .
@@ -534,30 +761,46 @@ export default function MiContrato({
         </View>
       ) : (
         <ScrollView
-          contentContainerStyle={styles.contenido}
-          showsVerticalScrollIndicator={false}
+          contentContainerStyle={
+            styles.contenido
+          }
+          showsVerticalScrollIndicator={
+            false
+          }
         >
           {(() => {
             const imagen =
-              obtenerImagen(contratoActivo);
+              obtenerImagen(
+                contratoActivo
+              );
 
             const progreso =
-              obtenerProgreso(contratoActivo);
+              obtenerProgreso(
+                contratoActivo
+              );
 
             const estado =
-              obtenerEstado(contratoActivo);
+              obtenerEstado(
+                contratoActivo
+              );
 
             const colorEstado =
-              obtenerColorEstado(estado);
+              obtenerColorEstado(
+                estado
+              );
 
             return (
               <>
                 <View
-                  style={styles.tarjetaPropiedad}
+                  style={
+                    styles.tarjetaPropiedad
+                  }
                 >
                   {imagen ? (
                     <Image
-                      source={{ uri: imagen }}
+                      source={{
+                        uri: imagen,
+                      }}
                       style={
                         styles.imagenPropiedad
                       }
@@ -565,13 +808,15 @@ export default function MiContrato({
                     />
                   ) : (
                     <View
-                      style={styles.sinImagen}
+                      style={
+                        styles.sinImagen
+                      }
                     >
                       <Ionicons
                         name="home-outline"
                         size={55}
                         color={
-                          COLORES.textoClaro
+                          colores.textoSecundario
                         }
                       />
 
@@ -647,7 +892,7 @@ export default function MiContrato({
                         name="location-outline"
                         size={19}
                         color={
-                          COLORES.textoSecundario
+                          colores.textoSecundario
                         }
                       />
 
@@ -664,15 +909,27 @@ export default function MiContrato({
                   </View>
                 </View>
 
-                <View style={styles.seccion}>
+                <View
+                  style={styles.seccion}
+                >
                   <Text
-                    style={styles.seccionTitulo}
+                    style={
+                      styles.seccionTitulo
+                    }
                   >
                     Vigencia del contrato
                   </Text>
 
-                  <View style={styles.fechasFila}>
-                    <View style={styles.fechaItem}>
+                  <View
+                    style={
+                      styles.fechasFila
+                    }
+                  >
+                    <View
+                      style={
+                        styles.fechaItem
+                      }
+                    >
                       <View
                         style={
                           styles.iconoFecha
@@ -682,19 +939,23 @@ export default function MiContrato({
                           name="calendar-outline"
                           size={21}
                           color={
-                            COLORES.primario
+                            colores.primario
                           }
                         />
                       </View>
 
                       <Text
-                        style={styles.fechaEtiqueta}
+                        style={
+                          styles.fechaEtiqueta
+                        }
                       >
                         Inicio
                       </Text>
 
                       <Text
-                        style={styles.fechaValor}
+                        style={
+                          styles.fechaValor
+                        }
                       >
                         {mostrarFecha(
                           obtenerFecha(
@@ -708,10 +969,16 @@ export default function MiContrato({
                     <Ionicons
                       name="arrow-forward"
                       size={22}
-                      color={COLORES.textoClaro}
+                      color={
+                        colores.textoSecundario
+                      }
                     />
 
-                    <View style={styles.fechaItem}>
+                    <View
+                      style={
+                        styles.fechaItem
+                      }
+                    >
                       <View
                         style={
                           styles.iconoFecha
@@ -721,19 +988,23 @@ export default function MiContrato({
                           name="calendar-outline"
                           size={21}
                           color={
-                            COLORES.primario
+                            colores.primario
                           }
                         />
                       </View>
 
                       <Text
-                        style={styles.fechaEtiqueta}
+                        style={
+                          styles.fechaEtiqueta
+                        }
                       >
                         Finalización
                       </Text>
 
                       <Text
-                        style={styles.fechaValor}
+                        style={
+                          styles.fechaValor
+                        }
                       >
                         {mostrarFecha(
                           obtenerFecha(
@@ -751,7 +1022,9 @@ export default function MiContrato({
                     }
                   >
                     <View
-                      style={styles.progresoBarra}
+                      style={
+                        styles.progresoBarra
+                      }
                     >
                       <View
                         style={[
@@ -764,24 +1037,35 @@ export default function MiContrato({
                     </View>
 
                     <Text
-                      style={styles.progresoTexto}
+                      style={
+                        styles.progresoTexto
+                      }
                     >
-                      {progreso.diasRestantes}{' '}
-                      {progreso.diasRestantes === 1
+                      {
+                        progreso.diasRestantes
+                      }{' '}
+                      {progreso.diasRestantes ===
+                      1
                         ? 'día restante'
                         : 'días restantes'}
                     </Text>
                   </View>
                 </View>
 
-                <View style={styles.seccion}>
+                <View
+                  style={styles.seccion}
+                >
                   <Text
-                    style={styles.seccionTitulo}
+                    style={
+                      styles.seccionTitulo
+                    }
                   >
                     Información de pago
                   </Text>
 
-                  <View style={styles.pagoFila}>
+                  <View
+                    style={styles.pagoFila}
+                  >
                     <View>
                       <Text
                         style={
@@ -796,12 +1080,15 @@ export default function MiContrato({
                           styles.pagoDescripcion
                         }
                       >
-                        Monto mensual del alquiler
+                        Monto mensual del
+                        alquiler
                       </Text>
                     </View>
 
                     <Text
-                      style={styles.montoPrincipal}
+                      style={
+                        styles.montoPrincipal
+                      }
                     >
                       L{' '}
                       {mostrarDinero(
@@ -812,9 +1099,15 @@ export default function MiContrato({
                     </Text>
                   </View>
 
-                  <View style={styles.separador} />
+                  <View
+                    style={
+                      styles.separador
+                    }
+                  />
 
-                  <View style={styles.pagoFila}>
+                  <View
+                    style={styles.pagoFila}
+                  >
                     <View>
                       <Text
                         style={
@@ -834,7 +1127,9 @@ export default function MiContrato({
                     </View>
 
                     <Text
-                      style={styles.montoDeposito}
+                      style={
+                        styles.montoDeposito
+                      }
                     >
                       L{' '}
                       {mostrarDinero(
@@ -846,9 +1141,13 @@ export default function MiContrato({
                   </View>
                 </View>
 
-                <View style={styles.seccion}>
+                <View
+                  style={styles.seccion}
+                >
                   <Text
-                    style={styles.seccionTitulo}
+                    style={
+                      styles.seccionTitulo
+                    }
                   >
                     Datos del arrendador
                   </Text>
@@ -858,11 +1157,15 @@ export default function MiContrato({
                       styles.arrendadorEncabezado
                     }
                   >
-                    <View style={styles.avatar}>
+                    <View
+                      style={styles.avatar}
+                    >
                       <Ionicons
                         name="person"
                         size={25}
-                        color={COLORES.primario}
+                        color={
+                          colores.primario
+                        }
                       />
                     </View>
 
@@ -903,7 +1206,7 @@ export default function MiContrato({
                         name="mail-outline"
                         size={19}
                         color={
-                          COLORES.primario
+                          colores.primario
                         }
                       />
 
@@ -931,7 +1234,7 @@ export default function MiContrato({
                         name="call-outline"
                         size={19}
                         color={
-                          COLORES.primario
+                          colores.primario
                         }
                       />
 
@@ -948,11 +1251,66 @@ export default function MiContrato({
                   )}
                 </View>
 
-                <View style={styles.numeroContrato}>
+                <View
+                  style={styles.seccion}
+                >
+                  <Text
+                    style={
+                      styles.seccionTitulo
+                    }
+                  >
+                    Recordatorio
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.recordatorioDescripcion
+                    }
+                  >
+                    Guarda en el calendario del
+                    teléfono la fecha de
+                    finalización del contrato.
+                  </Text>
+
+                  <TouchableOpacity
+                    style={
+                      styles.botonCalendario
+                    }
+                    onPress={() =>
+                      agregarRecordatorioCalendario(
+                        contratoActivo
+                      )
+                    }
+                  >
+                    <Ionicons
+                      name="calendar-outline"
+                      size={21}
+                      color={
+                        colores.primarioTexto
+                      }
+                    />
+
+                    <Text
+                      style={
+                        styles.textoBotonCalendario
+                      }
+                    >
+                      Agregar al calendario
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View
+                  style={
+                    styles.numeroContrato
+                  }
+                >
                   <Ionicons
                     name="document-text-outline"
                     size={19}
-                    color={COLORES.textoSecundario}
+                    color={
+                      colores.textoSecundario
+                    }
                   />
 
                   <Text
@@ -962,7 +1320,8 @@ export default function MiContrato({
                   >
                     Contrato #
                     {contratoActivo?.id ||
-                      contratoActivo?.contrato_id}
+                      contratoActivo
+                        ?.contrato_id}
                   </Text>
                 </View>
               </>
@@ -974,356 +1333,385 @@ export default function MiContrato({
   );
 }
 
-const styles = StyleSheet.create({
-  pantalla: {
-    flex: 1,
-    backgroundColor: COLORES.fondo,
-  },
+const crearStyles = (colores) =>
+  StyleSheet.create({
+    pantalla: {
+      flex: 1,
+      backgroundColor: colores.fondo,
+    },
 
-  centro: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORES.fondo,
-  },
+    centro: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colores.fondo,
+    },
 
-  textoCargando: {
-    marginTop: 12,
-    fontSize: 15,
-    color: COLORES.textoSecundario,
-  },
+    textoCargando: {
+      marginTop: 12,
+      fontSize: 15,
+      color: colores.textoSecundario,
+    },
 
-  encabezado: {
-    backgroundColor: COLORES.primario,
-    paddingTop: 48,
-    paddingHorizontal: 20,
-    paddingBottom: 22,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-  },
+    encabezado: {
+      backgroundColor: colores.primario,
+      paddingTop: 48,
+      paddingHorizontal: 20,
+      paddingBottom: 22,
+      borderBottomLeftRadius: 24,
+      borderBottomRightRadius: 24,
+    },
 
-  encabezadoSuperior: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
+    encabezadoSuperior: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 16,
+    },
 
-  botonEncabezado: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.16)',
-  },
+    botonEncabezado: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor:
+        'rgba(255,255,255,0.16)',
+    },
 
-  tituloPantalla: {
-    color: '#ffffff',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
+    tituloPantalla: {
+      color: colores.primarioTexto,
+      fontSize: 24,
+      fontWeight: 'bold',
+    },
 
-  subtituloPantalla: {
-    color: COLORES.primarioClaro,
-    fontSize: 14,
-    marginTop: 4,
-  },
+    subtituloPantalla: {
+      color: colores.primarioTexto,
+      fontSize: 14,
+      marginTop: 4,
+      opacity: 0.9,
+    },
 
-  contenido: {
-    padding: 17,
-    paddingBottom: 40,
-  },
+    contenido: {
+      padding: 17,
+      paddingBottom: 40,
+    },
 
-  tarjetaPropiedad: {
-    backgroundColor: COLORES.fondoTarjeta,
-    borderRadius: RADIO.lg,
-    overflow: 'hidden',
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: COLORES.borde,
-    boxShadow:
-      '0px 3px 10px rgba(15, 23, 42, 0.10)',
-    elevation: 3,
-  },
+    tarjetaPropiedad: {
+      backgroundColor: colores.tarjeta,
+      borderRadius: RADIO.lg,
+      overflow: 'hidden',
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: colores.borde,
+      boxShadow:
+        '0px 3px 10px rgba(15, 23, 42, 0.10)',
+      elevation: 3,
+    },
 
-  imagenPropiedad: {
-    width: '100%',
-    height: 190,
-    backgroundColor: COLORES.borde,
-  },
+    imagenPropiedad: {
+      width: '100%',
+      height: 190,
+      backgroundColor: colores.borde,
+    },
 
-  sinImagen: {
-    height: 170,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f1f5f9',
-  },
+    sinImagen: {
+      height: 170,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colores.campo,
+    },
 
-  textoSinImagen: {
-    marginTop: 7,
-    color: COLORES.textoClaro,
-  },
+    textoSinImagen: {
+      marginTop: 7,
+      color: colores.textoSecundario,
+    },
 
-  informacionPropiedad: {
-    padding: 17,
-  },
+    informacionPropiedad: {
+      padding: 17,
+    },
 
-  tituloPropiedadFila: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 10,
-  },
+    tituloPropiedadFila: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      gap: 10,
+    },
 
-  tituloPropiedad: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
-  },
+    tituloPropiedad: {
+      flex: 1,
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: colores.textoPrincipal,
+    },
 
-  estado: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 9,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
+    estado: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 9,
+      paddingVertical: 6,
+      borderRadius: 20,
+    },
 
-  estadoTexto: {
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
+    estadoTexto: {
+      fontSize: 11,
+      fontWeight: 'bold',
+    },
 
-  filaInformacion: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 10,
-  },
+    filaInformacion: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 10,
+    },
 
-  textoInformacion: {
-    flex: 1,
-    fontSize: 14,
-    color: COLORES.textoSecundario,
-  },
+    textoInformacion: {
+      flex: 1,
+      fontSize: 14,
+      color: colores.textoSecundario,
+    },
 
-  seccion: {
-    backgroundColor: COLORES.fondoTarjeta,
-    borderRadius: RADIO.lg,
-    padding: 18,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: COLORES.borde,
-    boxShadow:
-      '0px 2px 8px rgba(15, 23, 42, 0.08)',
-    elevation: 2,
-  },
+    seccion: {
+      backgroundColor: colores.tarjeta,
+      borderRadius: RADIO.lg,
+      padding: 18,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: colores.borde,
+      boxShadow:
+        '0px 2px 8px rgba(15, 23, 42, 0.08)',
+      elevation: 2,
+    },
 
-  seccionTitulo: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORES.primario,
-    marginBottom: 16,
-  },
+    seccionTitulo: {
+      fontSize: 16,
+      fontWeight: 'bold',
+      color: colores.primario,
+      marginBottom: 16,
+    },
 
-  fechasFila: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
+    fechasFila: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
 
-  fechaItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
+    fechaItem: {
+      flex: 1,
+      alignItems: 'center',
+    },
 
-  iconoFecha: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: COLORES.primarioClaro,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 7,
-  },
+    iconoFecha: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      backgroundColor:
+        colores.primarioClaro,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 7,
+    },
 
-  fechaEtiqueta: {
-    fontSize: 12,
-    color: COLORES.textoClaro,
-  },
+    fechaEtiqueta: {
+      fontSize: 12,
+      color: colores.textoSecundario,
+    },
 
-  fechaValor: {
-    marginTop: 4,
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
-  },
+    fechaValor: {
+      marginTop: 4,
+      fontSize: 14,
+      fontWeight: 'bold',
+      color: colores.textoPrincipal,
+    },
 
-  progresoContenedor: {
-    marginTop: 20,
-  },
+    progresoContenedor: {
+      marginTop: 20,
+    },
 
-  progresoBarra: {
-    height: 9,
-    borderRadius: 5,
-    overflow: 'hidden',
-    backgroundColor: COLORES.borde,
-  },
+    progresoBarra: {
+      height: 9,
+      borderRadius: 5,
+      overflow: 'hidden',
+      backgroundColor: colores.borde,
+    },
 
-  progresoRelleno: {
-    height: '100%',
-    borderRadius: 5,
-    backgroundColor: COLORES.primario,
-  },
+    progresoRelleno: {
+      height: '100%',
+      borderRadius: 5,
+      backgroundColor: colores.primario,
+    },
 
-  progresoTexto: {
-    marginTop: 7,
-    fontSize: 13,
-    textAlign: 'right',
-    color: COLORES.textoSecundario,
-  },
+    progresoTexto: {
+      marginTop: 7,
+      fontSize: 13,
+      textAlign: 'right',
+      color: colores.textoSecundario,
+    },
 
-  pagoFila: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 12,
-  },
+    pagoFila: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: 12,
+    },
 
-  pagoEtiqueta: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
-  },
+    pagoEtiqueta: {
+      fontSize: 15,
+      fontWeight: 'bold',
+      color: colores.textoPrincipal,
+    },
 
-  pagoDescripcion: {
-    fontSize: 12,
-    color: COLORES.textoSecundario,
-    marginTop: 3,
-  },
+    pagoDescripcion: {
+      fontSize: 12,
+      color: colores.textoSecundario,
+      marginTop: 3,
+    },
 
-  montoPrincipal: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: COLORES.exito,
-  },
+    montoPrincipal: {
+      fontSize: 22,
+      fontWeight: 'bold',
+      color: colores.exito,
+    },
 
-  montoDeposito: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
-  },
+    montoDeposito: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: colores.textoPrincipal,
+    },
 
-  separador: {
-    height: 1,
-    backgroundColor: COLORES.borde,
-    marginVertical: 15,
-  },
+    separador: {
+      height: 1,
+      backgroundColor: colores.borde,
+      marginVertical: 15,
+    },
 
-  arrendadorEncabezado: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
+    arrendadorEncabezado: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
 
-  avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORES.primarioClaro,
-  },
+    avatar: {
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor:
+        colores.primarioClaro,
+    },
 
-  arrendadorInformacion: {
-    flex: 1,
-    marginLeft: 12,
-  },
+    arrendadorInformacion: {
+      flex: 1,
+      marginLeft: 12,
+    },
 
-  arrendadorNombre: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
-  },
+    arrendadorNombre: {
+      fontSize: 16,
+      fontWeight: 'bold',
+      color: colores.textoPrincipal,
+    },
 
-  arrendadorEtiqueta: {
-    marginTop: 2,
-    fontSize: 13,
-    color: COLORES.exito,
-  },
+    arrendadorEtiqueta: {
+      marginTop: 2,
+      fontSize: 13,
+      color: colores.exito,
+    },
 
-  numeroContrato: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 7,
-    marginTop: 2,
-  },
+    recordatorioDescripcion: {
+      marginBottom: 15,
+      fontSize: 14,
+      lineHeight: 20,
+      color: colores.textoSecundario,
+    },
 
-  numeroContratoTexto: {
-    fontSize: 13,
-    color: COLORES.textoSecundario,
-  },
+    botonCalendario: {
+      minHeight: 48,
+      borderRadius: RADIO.sm,
+      backgroundColor: colores.primario,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 8,
+    },
 
-  estadoPantalla: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 28,
-  },
+    textoBotonCalendario: {
+      color: colores.primarioTexto,
+      fontSize: 15,
+      fontWeight: 'bold',
+    },
 
-  errorTexto: {
-    marginTop: 13,
-    marginBottom: 18,
-    textAlign: 'center',
-    fontSize: 15,
-    color: COLORES.peligro,
-  },
+    numeroContrato: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 7,
+      marginTop: 2,
+    },
 
-  botonReintentar: {
-    minHeight: 46,
-    paddingHorizontal: 20,
-    borderRadius: RADIO.sm,
-    backgroundColor: COLORES.primario,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 7,
-  },
+    numeroContratoTexto: {
+      fontSize: 13,
+      color: colores.textoSecundario,
+    },
 
-  textoReintentar: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
+    estadoPantalla: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 28,
+    },
 
-  sinContratoTitulo: {
-    marginTop: 16,
-    fontSize: 21,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    color: COLORES.textoPrincipal,
-  },
+    errorTexto: {
+      marginTop: 13,
+      marginBottom: 18,
+      textAlign: 'center',
+      fontSize: 15,
+      color: colores.peligro,
+    },
 
-  sinContratoDescripcion: {
-    marginTop: 8,
-    marginBottom: 20,
-    fontSize: 15,
-    lineHeight: 22,
-    textAlign: 'center',
-    color: COLORES.textoSecundario,
-  },
+    botonReintentar: {
+      minHeight: 46,
+      paddingHorizontal: 20,
+      borderRadius: RADIO.sm,
+      backgroundColor: colores.primario,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 7,
+    },
 
-  historialResumen: {
-    marginTop: 20,
-    padding: 12,
-    borderRadius: RADIO.sm,
-    backgroundColor: '#e0f2fe',
-  },
+    textoReintentar: {
+      color: colores.primarioTexto,
+      fontSize: 14,
+      fontWeight: 'bold',
+    },
 
-  historialResumenTexto: {
-    fontSize: 13,
-    color: '#0369a1',
-  },
-});
+    sinContratoTitulo: {
+      marginTop: 16,
+      fontSize: 21,
+      fontWeight: 'bold',
+      textAlign: 'center',
+      color: colores.textoPrincipal,
+    },
+
+    sinContratoDescripcion: {
+      marginTop: 8,
+      marginBottom: 20,
+      fontSize: 15,
+      lineHeight: 22,
+      textAlign: 'center',
+      color: colores.textoSecundario,
+    },
+
+    historialResumen: {
+      marginTop: 20,
+      padding: 12,
+      borderRadius: RADIO.sm,
+      backgroundColor:
+        colores.primarioClaro,
+    },
+
+    historialResumenTexto: {
+      fontSize: 13,
+      color: colores.primario,
+    },
+  });

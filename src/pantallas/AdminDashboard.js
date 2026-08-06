@@ -5,9 +5,10 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
+  StyleSheet,
 } from 'react-native';
 
-import styles from '../estilos/AdminDashboardStyles';
+import { useTema } from '../context/TemaContext';
 
 const STATS = [
   {
@@ -75,14 +76,16 @@ export default function AdminDashboard({
   navigation,
   route,
 }) {
-  /*
-   * Este es el usuario que recibimos desde Login.js.
-   */
-  const usuario = route.params?.usuario;
+  const { colores } = useTema();
+  const styles = crearStyles(colores);
+
+  const usuario = route?.params?.usuario;
 
   const nombreUsuario =
     usuario?.nombre_completo ||
+    usuario?.usuario_nombrecomp ||
     usuario?.usuario ||
+    usuario?.usuario_nombre ||
     'Arrendador';
 
   const abrirPantalla = (pantalla) => {
@@ -96,7 +99,11 @@ export default function AdminDashboard({
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.contenido}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.header}>
         <Text style={styles.headerSaludo}>
           Bienvenido de nuevo 👋
@@ -146,6 +153,7 @@ export default function AdminDashboard({
             onPress={() =>
               abrirPantalla(item.pantalla)
             }
+            activeOpacity={0.75}
           >
             <View
               style={styles.menuIconoContainer}
@@ -177,6 +185,7 @@ export default function AdminDashboard({
       <TouchableOpacity
         style={styles.cerrarBtn}
         onPress={cerrarSesion}
+        activeOpacity={0.75}
       >
         <Text style={styles.cerrarTexto}>
           Cerrar sesión
@@ -185,3 +194,170 @@ export default function AdminDashboard({
     </ScrollView>
   );
 }
+
+const crearStyles = (colores) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colores.fondo,
+    },
+
+    contenido: {
+      paddingBottom: 25,
+    },
+
+    header: {
+      backgroundColor: colores.primario,
+      paddingTop: 55,
+      paddingBottom: 28,
+      paddingHorizontal: 24,
+      borderBottomLeftRadius: 28,
+      borderBottomRightRadius: 28,
+    },
+
+    headerSaludo: {
+      color: colores.primarioTexto,
+      fontSize: 14,
+      opacity: 0.9,
+    },
+
+    headerNombre: {
+      color: colores.primarioTexto,
+      fontSize: 24,
+      fontWeight: 'bold',
+      marginTop: 2,
+    },
+
+    headerBadge: {
+      backgroundColor: 'rgba(15, 23, 42, 0.3)',
+      alignSelf: 'flex-start',
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 20,
+      marginTop: 9,
+    },
+
+    headerBadgeTexto: {
+      color: '#ffffff',
+      fontSize: 12,
+      fontWeight: '600',
+    },
+
+    tarjetasContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      padding: 16,
+      gap: 12,
+    },
+
+    tarjeta: {
+      width: '47%',
+      minHeight: 135,
+      padding: 18,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colores.borde,
+      backgroundColor: colores.tarjeta,
+      boxShadow:
+        '0px 2px 8px rgba(15, 23, 42, 0.08)',
+      elevation: 2,
+    },
+
+    tarjetaIcono: {
+      fontSize: 30,
+      marginBottom: 10,
+    },
+
+    tarjetaNumero: {
+      fontSize: 30,
+      fontWeight: 'bold',
+      color: colores.primario,
+    },
+
+    tarjetaLabel: {
+      fontSize: 13,
+      color: colores.textoSecundario,
+      marginTop: 2,
+    },
+
+    seccionTitulo: {
+      fontSize: 17,
+      fontWeight: 'bold',
+      color: colores.textoPrincipal,
+      paddingHorizontal: 20,
+      marginTop: 4,
+      marginBottom: 12,
+    },
+
+    menuContainer: {
+      paddingHorizontal: 16,
+      gap: 10,
+    },
+
+    menuBtn: {
+      minHeight: 80,
+      padding: 16,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colores.borde,
+      backgroundColor: colores.tarjeta,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      boxShadow:
+        '0px 2px 8px rgba(15, 23, 42, 0.08)',
+      elevation: 2,
+    },
+
+    menuIconoContainer: {
+      width: 46,
+      height: 46,
+      borderRadius: 14,
+      backgroundColor: colores.primarioClaro,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+
+    menuIcono: {
+      fontSize: 22,
+    },
+
+    menuTextoContainer: {
+      flex: 1,
+    },
+
+    menuTitulo: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colores.textoPrincipal,
+    },
+
+    menuSub: {
+      fontSize: 13,
+      color: colores.textoSecundario,
+      marginTop: 2,
+    },
+
+    menuFlecha: {
+      fontSize: 25,
+      color: colores.textoSecundario,
+    },
+
+    cerrarBtn: {
+      minHeight: 50,
+      margin: 20,
+      padding: 14,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colores.peligro,
+      backgroundColor: colores.peligroClaro,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+
+    cerrarTexto: {
+      color: colores.peligro,
+      fontWeight: 'bold',
+      fontSize: 15,
+    },
+  });

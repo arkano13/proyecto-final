@@ -14,8 +14,12 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { API_BASE_URL, API_URLS } from '../config/config';
+import { useTema } from '../context/TemaContext';
 
 export default function CrearContrato({ route, navigation }) {
+  const { colores } = useTema();
+  const styles = crearStyles(colores);
+
   const usuario = route?.params?.usuario;
   const solicitud = route?.params?.solicitud;
 
@@ -326,7 +330,7 @@ export default function CrearContrato({ route, navigation }) {
             <Ionicons
               name="arrow-back"
               size={24}
-              color="#0f172a"
+              color={colores.textoPrincipal}
             />
           </TouchableOpacity>
 
@@ -353,7 +357,7 @@ export default function CrearContrato({ route, navigation }) {
               <Ionicons
                 name="home-outline"
                 size={48}
-                color="#94a3b8"
+                color={colores.textoSecundario}
               />
 
               <Text style={styles.textoSinImagen}>
@@ -371,7 +375,7 @@ export default function CrearContrato({ route, navigation }) {
               <Ionicons
                 name="location-outline"
                 size={18}
-                color="#64748b"
+                color={colores.textoSecundario}
               />
 
               <Text style={styles.textoInformacion}>
@@ -400,7 +404,7 @@ export default function CrearContrato({ route, navigation }) {
             <Ionicons
               name="person-outline"
               size={20}
-              color="#2563eb"
+              color={colores.primario}
             />
 
             <Text style={styles.textoInformacionPrincipal}>
@@ -413,7 +417,7 @@ export default function CrearContrato({ route, navigation }) {
               <Ionicons
                 name="mail-outline"
                 size={20}
-                color="#2563eb"
+                color={colores.primario}
               />
 
               <Text style={styles.textoInformacion}>
@@ -440,7 +444,7 @@ export default function CrearContrato({ route, navigation }) {
             <Ionicons
               name="calendar-outline"
               size={21}
-              color="#64748b"
+              color={colores.textoSecundario}
             />
 
             <TextInput
@@ -448,7 +452,7 @@ export default function CrearContrato({ route, navigation }) {
               value={fechaInicio}
               onChangeText={setFechaInicio}
               placeholder="2026-08-05"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colores.textoSecundario}
               autoCapitalize="none"
               editable={!guardando}
               maxLength={10}
@@ -463,7 +467,7 @@ export default function CrearContrato({ route, navigation }) {
             <Ionicons
               name="calendar-outline"
               size={21}
-              color="#64748b"
+              color={colores.textoSecundario}
             />
 
             <TextInput
@@ -471,7 +475,7 @@ export default function CrearContrato({ route, navigation }) {
               value={fechaFin}
               onChangeText={setFechaFin}
               placeholder="2027-08-05"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colores.textoSecundario}
               autoCapitalize="none"
               editable={!guardando}
               maxLength={10}
@@ -512,7 +516,7 @@ export default function CrearContrato({ route, navigation }) {
               value={deposito}
               onChangeText={setDeposito}
               placeholder="0.00"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colores.textoSecundario}
               keyboardType="decimal-pad"
               editable={!guardando}
             />
@@ -528,7 +532,7 @@ export default function CrearContrato({ route, navigation }) {
             <Ionicons
               name="alert-circle-outline"
               size={21}
-              color="#dc2626"
+              color={colores.peligro}
             />
 
             <Text style={styles.errorTexto}>
@@ -548,14 +552,14 @@ export default function CrearContrato({ route, navigation }) {
           {guardando ? (
             <ActivityIndicator
               size="small"
-              color="#ffffff"
+              color={colores.primarioTexto}
             />
           ) : (
             <>
               <Ionicons
                 name="document-text-outline"
                 size={22}
-                color="#ffffff"
+                color={colores.primarioTexto}
               />
 
               <Text style={styles.textoBotonCrear}>
@@ -579,10 +583,11 @@ export default function CrearContrato({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const crearStyles = (colores) =>
+  StyleSheet.create({
   pantalla: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: colores.fondo,
   },
 
   contenido: {
@@ -600,12 +605,12 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#ffffff',
+    backgroundColor: colores.tarjeta,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: colores.borde,
   },
 
   encabezadoTexto: {
@@ -615,22 +620,22 @@ const styles = StyleSheet.create({
   tituloPantalla: {
     fontSize: 25,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: colores.textoPrincipal,
   },
 
   descripcionPantalla: {
     marginTop: 3,
     fontSize: 14,
-    color: '#64748b',
+    color: colores.textoSecundario,
   },
 
   tarjetaPropiedad: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colores.tarjeta,
     borderRadius: 16,
     marginBottom: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: colores.borde,
     boxShadow: '0px 3px 10px rgba(15, 23, 42, 0.10)',
     elevation: 3,
   },
@@ -638,19 +643,19 @@ const styles = StyleSheet.create({
   imagenPropiedad: {
     width: '100%',
     height: 185,
-    backgroundColor: '#e2e8f0',
+    backgroundColor: colores.borde,
   },
 
   sinImagen: {
     height: 165,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f1f5f9',
+    backgroundColor: colores.campo,
   },
 
   textoSinImagen: {
     marginTop: 7,
-    color: '#94a3b8',
+    color: colores.textoSecundario,
   },
 
   informacionPropiedad: {
@@ -660,7 +665,7 @@ const styles = StyleSheet.create({
   tituloPropiedad: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: colores.textoPrincipal,
   },
 
   filaInformacion: {
@@ -673,21 +678,21 @@ const styles = StyleSheet.create({
   textoInformacion: {
     flex: 1,
     fontSize: 14,
-    color: '#475569',
+    color: colores.textoSecundario,
   },
 
   textoInformacionPrincipal: {
     flex: 1,
     fontSize: 15,
     fontWeight: '600',
-    color: '#334155',
+    color: colores.textoPrincipal,
   },
 
   precioContenedor: {
     marginTop: 15,
     paddingTop: 13,
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
+    borderTopColor: colores.borde,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -695,41 +700,41 @@ const styles = StyleSheet.create({
 
   precioEtiqueta: {
     fontSize: 14,
-    color: '#64748b',
+    color: colores.textoSecundario,
   },
 
   precio: {
     fontSize: 21,
     fontWeight: 'bold',
-    color: '#16a34a',
+    color: colores.exito,
   },
 
   tarjeta: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colores.tarjeta,
     borderRadius: 14,
     padding: 17,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: colores.borde,
   },
 
   tituloSeccion: {
     fontSize: 17,
     fontWeight: 'bold',
-    color: '#1e293b',
+    color: colores.textoPrincipal,
     marginBottom: 5,
   },
 
   ayuda: {
     fontSize: 13,
-    color: '#64748b',
+    color: colores.textoSecundario,
     marginBottom: 16,
   },
 
   etiqueta: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#334155',
+    color: colores.textoPrincipal,
     marginTop: 12,
     marginBottom: 7,
   },
@@ -737,9 +742,9 @@ const styles = StyleSheet.create({
   inputContenedor: {
     minHeight: 50,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderColor: colores.borde,
     borderRadius: 10,
-    backgroundColor: '#ffffff',
+    backgroundColor: colores.tarjeta,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 13,
@@ -750,14 +755,14 @@ const styles = StyleSheet.create({
     minHeight: 48,
     marginLeft: 9,
     fontSize: 16,
-    color: '#0f172a',
+    color: colores.textoPrincipal,
     outlineStyle: 'none',
   },
 
   simboloMoneda: {
     fontSize: 17,
     fontWeight: 'bold',
-    color: '#16a34a',
+    color: colores.exito,
   },
 
   resumenPago: {
@@ -765,7 +770,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     padding: 14,
     borderRadius: 10,
-    backgroundColor: '#f0fdf4',
+    backgroundColor: colores.exitoClaro,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -774,33 +779,33 @@ const styles = StyleSheet.create({
   resumenEtiqueta: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: '#166534',
+    color: colores.exito,
   },
 
   resumenDescripcion: {
     marginTop: 3,
     fontSize: 12,
-    color: '#4d7c5b',
+    color: colores.textoSecundario,
   },
 
   resumenMonto: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#15803d',
+    color: colores.exito,
   },
 
   ayudaDeposito: {
     marginTop: 8,
     fontSize: 12,
-    color: '#64748b',
+    color: colores.textoSecundario,
   },
 
   errorContenedor: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fef2f2',
+    backgroundColor: colores.peligroClaro,
     borderWidth: 1,
-    borderColor: '#fecaca',
+    borderColor: colores.peligro,
     borderRadius: 10,
     padding: 12,
     marginBottom: 15,
@@ -810,13 +815,13 @@ const styles = StyleSheet.create({
   errorTexto: {
     flex: 1,
     fontSize: 14,
-    color: '#b91c1c',
+    color: colores.peligro,
   },
 
   botonCrear: {
     minHeight: 52,
     borderRadius: 11,
-    backgroundColor: '#2563eb',
+    backgroundColor: colores.primario,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
@@ -828,7 +833,7 @@ const styles = StyleSheet.create({
   },
 
   textoBotonCrear: {
-    color: '#ffffff',
+    color: colores.primarioTexto,
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -841,7 +846,7 @@ const styles = StyleSheet.create({
   },
 
   textoBotonCancelar: {
-    color: '#64748b',
+    color: colores.textoSecundario,
     fontSize: 15,
     fontWeight: '600',
   },

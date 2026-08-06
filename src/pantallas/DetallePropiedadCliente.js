@@ -14,10 +14,10 @@ import {
 } from 'react-native';
 
 import {
-  COLORES,
   SOMBRA,
   RADIO,
 } from '../estilos/globales';
+import { useTema } from '../context/TemaContext';
 
 import {
   API_BASE_URL,
@@ -78,6 +78,9 @@ export default function DetallePropiedadCliente({
   navigation,
   route,
 }) {
+  const { colores } = useTema();
+  const s = crearStyles(colores);
+
   const propiedad = route.params?.propiedad;
   const usuario = route.params?.usuario;
 
@@ -469,7 +472,7 @@ export default function DetallePropiedadCliente({
                 <TextInput
                   style={s.mensajeInput}
                   placeholder="Preséntate y explica por qué te interesa esta propiedad..."
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor={colores.textoSecundario}
                   value={mensaje}
                   onChangeText={setMensaje}
                   multiline
@@ -488,7 +491,7 @@ export default function DetallePropiedadCliente({
                 >
                   {enviando ? (
                     <ActivityIndicator
-                      color="#ffffff"
+                      color={colores.primarioTexto}
                     />
                   ) : (
                     <Text
@@ -509,41 +512,42 @@ export default function DetallePropiedadCliente({
   );
 }
 
-const s = StyleSheet.create({
+const crearStyles = (colores) =>
+  StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: colores.fondo,
   },
 
   centrado: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORES.fondo,
+    backgroundColor: colores.fondo,
     padding: 24,
   },
 
   errorTexto: {
-    color: COLORES.peligro,
+    color: colores.peligro,
     fontSize: 16,
     marginBottom: 16,
   },
 
   btnVolverError: {
-    backgroundColor: COLORES.primario,
+    backgroundColor: colores.primario,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: RADIO.sm,
   },
 
   btnVolverErrorTexto: {
-    color: '#ffffff',
+    color: colores.primarioTexto,
     fontWeight: 'bold',
   },
 
   imagenContainer: {
     height: 240,
-    backgroundColor: COLORES.primarioClaro,
+    backgroundColor: colores.primarioClaro,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
@@ -569,7 +573,7 @@ const s = StyleSheet.create({
   },
 
   btnVolverTexto: {
-    color: '#ffffff',
+    color: colores.primarioTexto,
     fontWeight: '600',
   },
 
@@ -577,14 +581,14 @@ const s = StyleSheet.create({
     position: 'absolute',
     top: 20,
     right: 16,
-    backgroundColor: COLORES.primario,
+    backgroundColor: colores.primario,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
   },
 
   tipoBadgeTexto: {
-    color: '#ffffff',
+    color: colores.primarioTexto,
     fontWeight: 'bold',
     fontSize: 12,
   },
@@ -595,7 +599,7 @@ const s = StyleSheet.create({
   },
 
   seccion: {
-    backgroundColor: COLORES.fondoTarjeta,
+    backgroundColor: colores.tarjeta,
     borderRadius: RADIO.lg,
     padding: 18,
     ...SOMBRA,
@@ -604,30 +608,30 @@ const s = StyleSheet.create({
   titulo: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   direccion: {
     fontSize: 14,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
     marginTop: 6,
   },
 
   precio: {
     fontSize: 26,
     fontWeight: 'bold',
-    color: COLORES.primario,
+    color: colores.primario,
     marginTop: 10,
   },
 
   precioSub: {
     fontSize: 15,
     fontWeight: 'normal',
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
   },
 
   disponibleBadge: {
-    backgroundColor: COLORES.exitoClaro,
+    backgroundColor: colores.exitoClaro,
     alignSelf: 'flex-start',
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -636,7 +640,7 @@ const s = StyleSheet.create({
   },
 
   disponibleBadgeTexto: {
-    color: COLORES.exito,
+    color: colores.exito,
     fontSize: 12,
     fontWeight: 'bold',
   },
@@ -644,12 +648,12 @@ const s = StyleSheet.create({
   seccionTitulo: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: COLORES.primario,
+    color: colores.primario,
     marginBottom: 14,
   },
 
   descripcion: {
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
     fontSize: 14,
     lineHeight: 21,
   },
@@ -672,12 +676,12 @@ const s = StyleSheet.create({
   caracteristicaValor: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   caracteristicaLabel: {
     fontSize: 11,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
     marginTop: 2,
     textAlign: 'center',
   },
@@ -692,7 +696,7 @@ const s = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: COLORES.primarioClaro,
+    backgroundColor: colores.primarioClaro,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -708,29 +712,29 @@ const s = StyleSheet.create({
   arrendadorNombre: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   arrendadorSub: {
     fontSize: 13,
-    color: COLORES.exito,
+    color: colores.exito,
     marginTop: 2,
   },
 
   arrendadorContacto: {
     fontSize: 12,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
     marginTop: 4,
   },
 
   mapaPlaceholder: {
-    backgroundColor: COLORES.fondo,
+    backgroundColor: colores.fondo,
     borderRadius: RADIO.md,
     minHeight: 130,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: COLORES.borde,
+    borderColor: colores.borde,
     padding: 14,
   },
 
@@ -739,33 +743,33 @@ const s = StyleSheet.create({
   },
 
   mapaTexto: {
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
     fontSize: 13,
     marginTop: 6,
     textAlign: 'center',
   },
 
   coordenadas: {
-    color: COLORES.textoClaro,
+    color: colores.textoSecundario,
     fontSize: 12,
     marginTop: 5,
   },
 
   mensajeInput: {
-    backgroundColor: COLORES.fondo,
+    backgroundColor: colores.fondo,
     borderWidth: 1.5,
-    borderColor: COLORES.borde,
+    borderColor: colores.borde,
     borderRadius: RADIO.md,
     padding: 14,
     fontSize: 15,
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
     height: 110,
     textAlignVertical: 'top',
     marginBottom: 14,
   },
 
   btnSolicitar: {
-    backgroundColor: COLORES.primario,
+    backgroundColor: colores.primario,
     padding: 16,
     borderRadius: RADIO.md,
     alignItems: 'center',
@@ -777,7 +781,7 @@ const s = StyleSheet.create({
   },
 
   btnSolicitarTexto: {
-    color: '#ffffff',
+    color: colores.primarioTexto,
     fontWeight: 'bold',
     fontSize: 16,
   },
@@ -794,19 +798,19 @@ const s = StyleSheet.create({
   enviadoTitulo: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: COLORES.exito,
+    color: colores.exito,
     marginTop: 10,
   },
 
   enviadoTexto: {
     fontSize: 14,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
     marginTop: 6,
     textAlign: 'center',
   },
 
   btnMisSolicitudes: {
-    backgroundColor: COLORES.primarioClaro,
+    backgroundColor: colores.primarioClaro,
     paddingHorizontal: 18,
     paddingVertical: 11,
     borderRadius: RADIO.sm,
@@ -814,7 +818,7 @@ const s = StyleSheet.create({
   },
 
   btnMisSolicitudesTexto: {
-    color: COLORES.primario,
+    color: colores.primario,
     fontWeight: 'bold',
   },
 });

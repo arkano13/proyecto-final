@@ -12,13 +12,14 @@ import {
   ActivityIndicator,
   Image,
   Platform,
+  StyleSheet,
 } from 'react-native';
 
 import {
   useFocusEffect,
 } from '@react-navigation/native';
 
-import styles from '../estilos/MisPropiedadesStyles';
+import { useTema } from '../context/TemaContext';
 
 import {
   API_BASE_URL,
@@ -79,6 +80,9 @@ export default function MisPropiedades({
   navigation,
   route,
 }) {
+  const { colores } = useTema();
+  const styles = crearStyles(colores);
+
   const usuario = route.params?.usuario;
 
   const [propiedades, setPropiedades] =
@@ -283,13 +287,13 @@ export default function MisPropiedades({
       >
         <ActivityIndicator
           size="large"
-          color="#0f766e"
+          color={colores.primario}
         />
 
         <Text
           style={{
             marginTop: 12,
-            color: '#64748b',
+            color: colores.textoSecundario,
           }}
         >
           Cargando propiedades...
@@ -312,7 +316,7 @@ export default function MisPropiedades({
       >
                <Text
           style={{
-            color: '#dc2626',
+            color: colores.peligro,
             textAlign: 'center',
             marginBottom: 16,
           }}
@@ -340,7 +344,7 @@ export default function MisPropiedades({
         >
           <Text
             style={{
-              color: '#ffffff',
+              color: colores.primarioTexto,
               fontSize: 22,
               marginRight: 10,
             }}
@@ -537,3 +541,186 @@ export default function MisPropiedades({
     </View>
   );
 }
+
+const crearStyles = (colores) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colores.fondo,
+    },
+
+    header: {
+      backgroundColor: colores.primario,
+      paddingTop: 55,
+      paddingBottom: 20,
+      paddingHorizontal: 20,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderBottomLeftRadius: 24,
+      borderBottomRightRadius: 24,
+    },
+
+    headerTitulo: {
+      color: colores.primarioTexto,
+      fontSize: 20,
+      fontWeight: 'bold',
+    },
+
+    btnAgregar: {
+      backgroundColor: colores.oscuro
+        ? '#0f172a'
+        : '#0f766e',
+      paddingHorizontal: 14,
+      paddingVertical: 9,
+      borderRadius: 10,
+      borderWidth: colores.oscuro ? 1 : 0,
+      borderColor: colores.borde,
+    },
+
+    btnAgregarTexto: {
+      color: '#ffffff',
+      fontWeight: 'bold',
+      fontSize: 13,
+    },
+
+    lista: {
+      padding: 16,
+      gap: 14,
+      paddingBottom: 35,
+    },
+
+    tarjeta: {
+      backgroundColor: colores.tarjeta,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colores.borde,
+      overflow: 'hidden',
+      boxShadow:
+        '0px 2px 8px rgba(15, 23, 42, 0.08)',
+      elevation: 2,
+    },
+
+    tarjetaImagen: {
+      width: '100%',
+      height: 160,
+      backgroundColor: colores.primarioClaro,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+
+    tarjetaImagenEmoji: {
+      fontSize: 60,
+    },
+
+    tarjetaBadge: {
+      position: 'absolute',
+      top: 12,
+      right: 12,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 20,
+    },
+
+    badgeDisponible: {
+      backgroundColor: colores.exito,
+    },
+
+    badgeOcupada: {
+      backgroundColor: colores.peligro,
+    },
+
+    badgeTexto: {
+      color: '#ffffff',
+      fontSize: 11,
+      fontWeight: 'bold',
+    },
+
+    tarjetaBody: {
+      padding: 16,
+    },
+
+    tarjetaTitulo: {
+      fontSize: 17,
+      fontWeight: 'bold',
+      color: colores.textoPrincipal,
+    },
+
+    tarjetaDireccion: {
+      fontSize: 13,
+      color: colores.textoSecundario,
+      marginTop: 4,
+    },
+
+    tarjetaPrecio: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: colores.primario,
+      marginTop: 8,
+    },
+
+    tarjetaPrecioSub: {
+      fontSize: 13,
+      color: colores.textoSecundario,
+    },
+
+    tarjetaAcciones: {
+      flexDirection: 'row',
+      gap: 10,
+      marginTop: 14,
+      paddingTop: 14,
+      borderTopWidth: 1,
+      borderTopColor: colores.borde,
+    },
+
+    btnEditar: {
+      flex: 1,
+      backgroundColor: colores.primarioClaro,
+      padding: 10,
+      borderRadius: 8,
+      alignItems: 'center',
+    },
+
+    btnEditarTexto: {
+      color: colores.primario,
+      fontWeight: '600',
+      fontSize: 14,
+    },
+
+    btnEliminar: {
+      flex: 1,
+      backgroundColor: colores.peligroClaro,
+      padding: 10,
+      borderRadius: 8,
+      alignItems: 'center',
+    },
+
+    btnEliminarTexto: {
+      color: colores.peligro,
+      fontWeight: '600',
+      fontSize: 14,
+    },
+
+    vacio: {
+      alignItems: 'center',
+      paddingTop: 80,
+      paddingHorizontal: 20,
+    },
+
+    vacioIcono: {
+      fontSize: 60,
+      marginBottom: 16,
+    },
+
+    vacioTexto: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: colores.textoPrincipal,
+    },
+
+    vacioSub: {
+      fontSize: 14,
+      color: colores.textoSecundario,
+      marginTop: 6,
+    },
+  });

@@ -17,14 +17,17 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { API_URLS } from '../config/config';
 import {
-  COLORES,
   RADIO,
 } from '../estilos/globales';
+import { useTema } from '../context/TemaContext';
 
 export default function RegistrarPago({
   route,
   navigation,
 }) {
+  const { colores } = useTema();
+  const styles = crearStyles(colores);
+
   const usuario = route?.params?.usuario;
   const contratoRecibido =
     route?.params?.contrato;
@@ -520,7 +523,7 @@ export default function RegistrarPago({
             <Ionicons
               name="arrow-back"
               size={24}
-              color="#ffffff"
+              color={colores.primarioTexto}
             />
           </TouchableOpacity>
 
@@ -544,7 +547,7 @@ export default function RegistrarPago({
             <View style={styles.cargando}>
               <ActivityIndicator
                 size="small"
-                color={COLORES.primario}
+                color={colores.primario}
               />
 
               <Text style={styles.cargandoTexto}>
@@ -556,7 +559,7 @@ export default function RegistrarPago({
               <Ionicons
                 name="document-text-outline"
                 size={45}
-                color={COLORES.textoClaro}
+                color={colores.textoSecundario}
               />
 
               <Text style={styles.vacioTitulo}>
@@ -591,8 +594,8 @@ export default function RegistrarPago({
                       size={23}
                       color={
                         seleccionado
-                          ? '#ffffff'
-                          : COLORES.primario
+                          ? colores.primarioTexto
+                          : colores.primario
                       }
                     />
                   </View>
@@ -647,8 +650,8 @@ export default function RegistrarPago({
                     size={24}
                     color={
                       seleccionado
-                        ? '#ffffff'
-                        : COLORES.textoClaro
+                        ? colores.primarioTexto
+                        : colores.textoSecundario
                     }
                   />
                 </TouchableOpacity>
@@ -739,8 +742,8 @@ export default function RegistrarPago({
                         size={21}
                         color={
                           seleccionado
-                            ? '#ffffff'
-                            : COLORES.primario
+                            ? colores.primarioTexto
+                            : colores.primario
                         }
                       />
 
@@ -797,7 +800,7 @@ export default function RegistrarPago({
             <Ionicons
               name="alert-circle-outline"
               size={21}
-              color={COLORES.peligro}
+              color={colores.peligro}
             />
 
             <Text style={styles.errorTexto}>
@@ -819,14 +822,14 @@ export default function RegistrarPago({
             {guardando ? (
               <ActivityIndicator
                 size="small"
-                color="#ffffff"
+                color={colores.primarioTexto}
               />
             ) : (
               <>
                 <Ionicons
                   name="checkmark-circle-outline"
                   size={22}
-                  color="#ffffff"
+                  color={colores.primarioTexto}
                 />
 
                 <Text
@@ -843,10 +846,11 @@ export default function RegistrarPago({
   );
 }
 
-const styles = StyleSheet.create({
+const crearStyles = (colores) =>
+  StyleSheet.create({
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: colores.fondo,
   },
 
   contenido: {
@@ -854,7 +858,7 @@ const styles = StyleSheet.create({
   },
 
   encabezado: {
-    backgroundColor: COLORES.primario,
+    backgroundColor: colores.primario,
     paddingTop: 50,
     paddingBottom: 22,
     paddingHorizontal: 20,
@@ -882,23 +886,24 @@ const styles = StyleSheet.create({
   titulo: {
     fontSize: 23,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: colores.primarioTexto,
   },
 
   subtitulo: {
     marginTop: 3,
     fontSize: 13,
-    color: COLORES.primarioClaro,
+    color: colores.primarioTexto,
+    opacity: 0.9,
   },
 
   seccion: {
     marginHorizontal: 17,
     marginBottom: 16,
     padding: 17,
-    backgroundColor: COLORES.fondoTarjeta,
+    backgroundColor: colores.tarjeta,
     borderRadius: RADIO.lg,
     borderWidth: 1,
-    borderColor: COLORES.borde,
+    borderColor: colores.borde,
     boxShadow:
       '0px 2px 8px rgba(15, 23, 42, 0.08)',
     elevation: 2,
@@ -907,7 +912,7 @@ const styles = StyleSheet.create({
   seccionTitulo: {
     fontSize: 17,
     fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
     marginBottom: 13,
   },
 
@@ -918,7 +923,7 @@ const styles = StyleSheet.create({
 
   cargandoTexto: {
     marginTop: 8,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
   },
 
   vacio: {
@@ -930,7 +935,7 @@ const styles = StyleSheet.create({
     marginTop: 9,
     fontSize: 16,
     fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   contrato: {
@@ -939,22 +944,22 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderRadius: RADIO.sm,
     borderWidth: 1,
-    borderColor: COLORES.borde,
-    backgroundColor: COLORES.fondo,
+    borderColor: colores.borde,
+    backgroundColor: colores.fondo,
     flexDirection: 'row',
     alignItems: 'center',
   },
 
   contratoSeleccionado: {
-    backgroundColor: COLORES.primario,
-    borderColor: COLORES.primario,
+    backgroundColor: colores.primario,
+    borderColor: colores.primario,
   },
 
   iconoContrato: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: COLORES.primarioClaro,
+    backgroundColor: colores.primarioClaro,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -967,28 +972,29 @@ const styles = StyleSheet.create({
   contratoTitulo: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   contratoInquilino: {
     marginTop: 2,
     fontSize: 13,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
   },
 
   contratoMonto: {
     marginTop: 4,
     fontSize: 14,
     fontWeight: 'bold',
-    color: COLORES.exito,
+    color: colores.exito,
   },
 
   textoBlanco: {
-    color: '#ffffff',
+    color: colores.primarioTexto,
   },
 
   textoClaro: {
-    color: COLORES.primarioClaro,
+    color: colores.primarioTexto,
+    opacity: 0.85,
   },
 
   etiqueta: {
@@ -996,18 +1002,18 @@ const styles = StyleSheet.create({
     marginBottom: 7,
     fontSize: 14,
     fontWeight: '600',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   input: {
     minHeight: 50,
     paddingHorizontal: 13,
     borderWidth: 1,
-    borderColor: COLORES.borde,
+    borderColor: colores.borde,
     borderRadius: RADIO.sm,
-    backgroundColor: '#ffffff',
+    backgroundColor: colores.tarjeta,
     fontSize: 16,
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   inputObservacion: {
@@ -1019,7 +1025,7 @@ const styles = StyleSheet.create({
   ayuda: {
     marginTop: 5,
     fontSize: 12,
-    color: COLORES.textoClaro,
+    color: colores.textoSecundario,
   },
 
   metodos: {
@@ -1033,22 +1039,22 @@ const styles = StyleSheet.create({
     minHeight: 67,
     borderRadius: RADIO.sm,
     borderWidth: 1,
-    borderColor: COLORES.borde,
-    backgroundColor: COLORES.fondo,
+    borderColor: colores.borde,
+    backgroundColor: colores.fondo,
     justifyContent: 'center',
     alignItems: 'center',
   },
 
   metodoSeleccionado: {
-    backgroundColor: COLORES.primario,
-    borderColor: COLORES.primario,
+    backgroundColor: colores.primario,
+    borderColor: colores.primario,
   },
 
   metodoTexto: {
     marginTop: 5,
     fontSize: 12,
     fontWeight: '600',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   error: {
@@ -1057,8 +1063,8 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: RADIO.sm,
     borderWidth: 1,
-    borderColor: '#fecaca',
-    backgroundColor: COLORES.peligroClaro,
+    borderColor: colores.peligro,
+    backgroundColor: colores.peligroClaro,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -1067,14 +1073,14 @@ const styles = StyleSheet.create({
   errorTexto: {
     flex: 1,
     fontSize: 14,
-    color: COLORES.peligro,
+    color: colores.peligro,
   },
 
   botonGuardar: {
     minHeight: 52,
     marginHorizontal: 17,
     borderRadius: RADIO.sm,
-    backgroundColor: COLORES.exito,
+    backgroundColor: colores.exito,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1088,6 +1094,6 @@ const styles = StyleSheet.create({
   textoBoton: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: colores.primarioTexto,
   },
 });

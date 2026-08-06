@@ -14,17 +14,20 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
 import { API_BASE_URL, API_URLS } from '../config/config';
 import {
-  COLORES,
   RADIO,
 } from '../estilos/globales';
+import { useTema } from '../context/TemaContext';
+import useActualizacionAutomatica from '../hooks/useActualizacionAutomatica';
 
 export default function ContratosAdmin({
   route,
   navigation,
 }) {
+  const { colores } = useTema();
+  const styles = crearStyles(colores);
+
   const usuario = route?.params?.usuario;
 
   const [contratos, setContratos] = useState([]);
@@ -145,10 +148,9 @@ export default function ContratosAdmin({
     [obtenerArrendadorId]
   );
 
-  useFocusEffect(
-    useCallback(() => {
-      cargarContratos();
-    }, [cargarContratos])
+  useActualizacionAutomatica(
+    cargarContratos,
+    20
   );
 
   const mostrarMensaje = (
@@ -488,23 +490,23 @@ export default function ContratosAdmin({
   const obtenerColorEstado = (estado) => {
     if (estado === 'activo') {
       return {
-        fondo: COLORES.exitoClaro,
-        texto: COLORES.exito,
+        fondo: colores.exitoClaro,
+        texto: colores.exito,
         icono: 'checkmark-circle',
       };
     }
 
     if (estado === 'finalizado') {
       return {
-        fondo: '#dbeafe',
-        texto: '#2563eb',
+        fondo: colores.primarioClaro,
+        texto: colores.primario,
         icono: 'flag',
       };
     }
 
     return {
-      fondo: COLORES.peligroClaro,
-      texto: COLORES.peligro,
+      fondo: colores.peligroClaro,
+      texto: colores.peligro,
       icono: 'close-circle',
     };
   };
@@ -520,7 +522,7 @@ export default function ContratosAdmin({
       <View style={styles.centro}>
         <ActivityIndicator
           size="large"
-          color={COLORES.primario}
+          color={colores.primario}
         />
 
         <Text style={styles.textoCargando}>
@@ -537,7 +539,7 @@ export default function ContratosAdmin({
           <Ionicons
             name="document-text-outline"
             size={28}
-            color={COLORES.primario}
+            color={colores.primario}
           />
         </View>
 
@@ -563,7 +565,7 @@ export default function ContratosAdmin({
           <Ionicons
             name="refresh"
             size={22}
-            color={COLORES.primario}
+            color={colores.primario}
           />
         </TouchableOpacity>
       </View>
@@ -573,7 +575,7 @@ export default function ContratosAdmin({
           <Ionicons
             name="alert-circle-outline"
             size={55}
-            color={COLORES.peligro}
+            color={colores.peligro}
           />
 
           <Text style={styles.errorTexto}>
@@ -596,7 +598,7 @@ export default function ContratosAdmin({
           <Ionicons
             name="document-text-outline"
             size={70}
-            color={COLORES.textoClaro}
+            color={colores.textoSecundario}
           />
 
           <Text style={styles.vacioTitulo}>
@@ -615,7 +617,7 @@ export default function ContratosAdmin({
             <Ionicons
               name="refresh-outline"
               size={19}
-              color="#ffffff"
+              color={colores.primarioTexto}
             />
 
             <Text
@@ -671,7 +673,7 @@ export default function ContratosAdmin({
                         name="home-outline"
                         size={46}
                         color={
-                          COLORES.textoClaro
+                          colores.textoSecundario
                         }
                       />
 
@@ -760,7 +762,7 @@ export default function ContratosAdmin({
                           name="location-outline"
                           size={18}
                           color={
-                            COLORES.textoSecundario
+                            colores.textoSecundario
                           }
                         />
 
@@ -794,7 +796,7 @@ export default function ContratosAdmin({
                       <Ionicons
                         name="person-outline"
                         size={18}
-                        color={COLORES.primario}
+                        color={colores.primario}
                       />
 
                       <Text
@@ -820,7 +822,7 @@ export default function ContratosAdmin({
                           name="mail-outline"
                           size={18}
                           color={
-                            COLORES.primario
+                            colores.primario
                           }
                         />
 
@@ -848,7 +850,7 @@ export default function ContratosAdmin({
                           name="call-outline"
                           size={18}
                           color={
-                            COLORES.primario
+                            colores.primario
                           }
                         />
 
@@ -889,7 +891,7 @@ export default function ContratosAdmin({
                         name="arrow-forward"
                         size={21}
                         color={
-                          COLORES.textoClaro
+                          colores.textoSecundario
                         }
                       />
 
@@ -986,14 +988,14 @@ export default function ContratosAdmin({
                           {estaProcesando ? (
                             <ActivityIndicator
                               size="small"
-                              color="#ffffff"
+                              color={colores.primarioTexto}
                             />
                           ) : (
                             <>
                               <Ionicons
                                 name="close-circle-outline"
                                 size={19}
-                                color="#ffffff"
+                                color={colores.primarioTexto}
                               />
 
                               <Text
@@ -1027,14 +1029,14 @@ export default function ContratosAdmin({
                           {estaProcesando ? (
                             <ActivityIndicator
                               size="small"
-                              color="#ffffff"
+                              color={colores.primarioTexto}
                             />
                           ) : (
                             <>
                               <Ionicons
                                 name="flag-outline"
                                 size={19}
-                                color="#ffffff"
+                                color={colores.primarioTexto}
                               />
 
                               <Text
@@ -1060,33 +1062,34 @@ export default function ContratosAdmin({
   );
 }
 
-const styles = StyleSheet.create({
+const crearStyles = (colores) =>
+  StyleSheet.create({
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: colores.fondo,
   },
 
   centro: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORES.fondo,
+    backgroundColor: colores.fondo,
   },
 
   textoCargando: {
     marginTop: 12,
     fontSize: 15,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
   },
 
   resumenSuperior: {
-    backgroundColor: COLORES.fondoTarjeta,
+    backgroundColor: colores.tarjeta,
     padding: 17,
     margin: 16,
     marginBottom: 0,
     borderRadius: RADIO.lg,
     borderWidth: 1,
-    borderColor: COLORES.borde,
+    borderColor: colores.borde,
     flexDirection: 'row',
     alignItems: 'center',
     boxShadow:
@@ -1098,7 +1101,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 15,
-    backgroundColor: COLORES.primarioClaro,
+    backgroundColor: colores.primarioClaro,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1111,20 +1114,20 @@ const styles = StyleSheet.create({
   resumenTitulo: {
     fontSize: 19,
     fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   resumenDescripcion: {
     marginTop: 3,
     fontSize: 14,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
   },
 
   botonRecargar: {
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: '#f0fdfa',
+    backgroundColor: colores.primarioClaro,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1135,12 +1138,12 @@ const styles = StyleSheet.create({
   },
 
   tarjeta: {
-    backgroundColor: COLORES.fondoTarjeta,
+    backgroundColor: colores.tarjeta,
     borderRadius: RADIO.lg,
     marginBottom: 17,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: COLORES.borde,
+    borderColor: colores.borde,
     boxShadow:
       '0px 3px 10px rgba(15, 23, 42, 0.10)',
     elevation: 3,
@@ -1149,19 +1152,19 @@ const styles = StyleSheet.create({
   imagenPropiedad: {
     width: '100%',
     height: 185,
-    backgroundColor: COLORES.borde,
+    backgroundColor: colores.borde,
   },
 
   sinImagen: {
     height: 165,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f1f5f9',
+    backgroundColor: colores.campo,
   },
 
   textoSinImagen: {
     marginTop: 6,
-    color: COLORES.textoClaro,
+    color: colores.textoSecundario,
   },
 
   contenidoTarjeta: {
@@ -1182,13 +1185,13 @@ const styles = StyleSheet.create({
   tituloPropiedad: {
     fontSize: 19,
     fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   numeroContrato: {
     marginTop: 4,
     fontSize: 12,
-    color: COLORES.textoClaro,
+    color: colores.textoSecundario,
   },
 
   estado: {
@@ -1215,33 +1218,33 @@ const styles = StyleSheet.create({
   textoInformacion: {
     flex: 1,
     fontSize: 14,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
   },
 
   textoInformacionPrincipal: {
     flex: 1,
     fontSize: 15,
     fontWeight: '600',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   separador: {
     height: 1,
-    backgroundColor: COLORES.borde,
+    backgroundColor: colores.borde,
     marginVertical: 15,
   },
 
   subtitulo: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   fechas: {
     marginTop: 16,
     padding: 13,
     borderRadius: RADIO.sm,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: colores.fondo,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -1254,14 +1257,14 @@ const styles = StyleSheet.create({
 
   fechaEtiqueta: {
     fontSize: 11,
-    color: COLORES.textoClaro,
+    color: colores.textoSecundario,
   },
 
   fechaValor: {
     marginTop: 4,
     fontSize: 13,
     fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   montos: {
@@ -1274,26 +1277,26 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 12,
     borderRadius: RADIO.sm,
-    backgroundColor: '#f0fdf4',
+    backgroundColor: colores.exitoClaro,
   },
 
   montoEtiqueta: {
     fontSize: 11,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
   },
 
   montoMensual: {
     marginTop: 4,
     fontSize: 17,
     fontWeight: 'bold',
-    color: COLORES.exito,
+    color: colores.exito,
   },
 
   montoDeposito: {
     marginTop: 4,
     fontSize: 15,
     fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   botonesContenedor: {
@@ -1313,11 +1316,11 @@ const styles = StyleSheet.create({
   },
 
   botonCancelar: {
-    backgroundColor: COLORES.peligro,
+    backgroundColor: colores.peligro,
   },
 
   botonFinalizar: {
-    backgroundColor: COLORES.primario,
+    backgroundColor: colores.primario,
   },
 
   botonDeshabilitado: {
@@ -1327,7 +1330,7 @@ const styles = StyleSheet.create({
   textoBoton: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: colores.primarioTexto,
   },
 
   estadoPantalla: {
@@ -1342,14 +1345,14 @@ const styles = StyleSheet.create({
     marginBottom: 18,
     fontSize: 15,
     textAlign: 'center',
-    color: COLORES.peligro,
+    color: colores.peligro,
   },
 
   vacioTitulo: {
     marginTop: 15,
     fontSize: 21,
     fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   vacioTexto: {
@@ -1358,14 +1361,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     textAlign: 'center',
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
   },
 
   botonReintentar: {
     minHeight: 46,
     paddingHorizontal: 20,
     borderRadius: RADIO.sm,
-    backgroundColor: COLORES.primario,
+    backgroundColor: colores.primario,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1373,7 +1376,7 @@ const styles = StyleSheet.create({
   },
 
   textoReintentar: {
-    color: '#ffffff',
+    color: colores.primarioTexto,
     fontSize: 14,
     fontWeight: 'bold',
   },

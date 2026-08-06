@@ -10,13 +10,14 @@ import {
   ActivityIndicator,
   Image,
   Platform,
+  StyleSheet,
 } from 'react-native';
 
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 
-import styles from '../estilos/FormPropiedadStyles';
 import { API_URLS } from '../config/config';
+import { useTema } from '../context/TemaContext';
 
 const TIPOS = [
   'Casa',
@@ -31,6 +32,9 @@ export default function FormPropiedad({
   navigation,
   route,
 }) {
+  const { colores } = useTema();
+  const styles = crearStyles(colores);
+
   const usuario = route.params?.usuario;
   const propExistente = route.params?.propiedad;
   const editando = Boolean(propExistente?.id);
@@ -461,7 +465,7 @@ export default function FormPropiedad({
           <TextInput
             style={styles.input}
             placeholder="Ej: Apartamento céntrico"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={colores.textoSecundario}
             value={titulo}
             onChangeText={setTitulo}
             editable={!guardando}
@@ -477,7 +481,7 @@ export default function FormPropiedad({
               styles.inputMultiline,
             ]}
             placeholder="Describe la propiedad..."
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={colores.textoSecundario}
             value={descripcion}
             onChangeText={setDescripcion}
             multiline
@@ -522,7 +526,7 @@ export default function FormPropiedad({
           <TextInput
             style={styles.input}
             placeholder="Ej: 8000"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={colores.textoSecundario}
             value={precio}
             onChangeText={setPrecio}
             keyboardType="decimal-pad"
@@ -536,7 +540,7 @@ export default function FormPropiedad({
           <TextInput
             style={styles.input}
             placeholder="Ej: Col. Las Palmas, Casa 12"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={colores.textoSecundario}
             value={direccion}
             onChangeText={setDireccion}
             editable={!guardando}
@@ -549,7 +553,7 @@ export default function FormPropiedad({
           <TextInput
             style={styles.input}
             placeholder="Ej: 3"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={colores.textoSecundario}
             value={habitaciones}
             onChangeText={setHabitaciones}
             keyboardType="number-pad"
@@ -563,7 +567,7 @@ export default function FormPropiedad({
           <TextInput
             style={styles.input}
             placeholder="Ej: 2"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={colores.textoSecundario}
             value={banos}
             onChangeText={setBanos}
             keyboardType="number-pad"
@@ -652,7 +656,9 @@ export default function FormPropiedad({
           disabled={guardando}
         >
           {guardando ? (
-            <ActivityIndicator color="#ffffff" />
+            <ActivityIndicator
+              color={colores.primarioTexto}
+            />
           ) : (
             <Text style={styles.btnGuardarTexto}>
               💾{' '}
@@ -666,3 +672,192 @@ export default function FormPropiedad({
     </View>
   );
 }
+
+const crearStyles = (colores) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colores.fondo,
+    },
+
+    header: {
+      backgroundColor: colores.primario,
+      paddingTop: 55,
+      paddingBottom: 20,
+      paddingHorizontal: 20,
+      borderBottomLeftRadius: 24,
+      borderBottomRightRadius: 24,
+    },
+
+    headerTitulo: {
+      color: colores.primarioTexto,
+      fontSize: 20,
+      fontWeight: 'bold',
+    },
+
+    headerSub: {
+      color: colores.primarioTexto,
+      fontSize: 13,
+      marginTop: 4,
+      opacity: 0.9,
+    },
+
+    scroll: {
+      padding: 20,
+      paddingBottom: 35,
+    },
+
+    seccion: {
+      backgroundColor: colores.tarjeta,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colores.borde,
+      padding: 18,
+      marginBottom: 16,
+      boxShadow:
+        '0px 2px 8px rgba(15, 23, 42, 0.08)',
+      elevation: 2,
+    },
+
+    seccionTitulo: {
+      fontSize: 15,
+      fontWeight: 'bold',
+      color: colores.primario,
+      marginBottom: 14,
+    },
+
+    label: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colores.textoPrincipal,
+      marginBottom: 6,
+    },
+
+    input: {
+      backgroundColor: colores.campo,
+      borderWidth: 1.5,
+      borderColor: colores.borde,
+      borderRadius: 8,
+      padding: 12,
+      fontSize: 15,
+      color: colores.textoPrincipal,
+      marginBottom: 14,
+    },
+
+    inputMultiline: {
+      height: 90,
+      textAlignVertical: 'top',
+    },
+
+    tiposContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginBottom: 14,
+    },
+
+    tipoBtn: {
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 20,
+      borderWidth: 1.5,
+      borderColor: colores.borde,
+      backgroundColor: colores.campo,
+    },
+
+    tipoActivo: {
+      borderColor: colores.primario,
+      backgroundColor: colores.primarioClaro,
+    },
+
+    tipoTexto: {
+      color: colores.textoSecundario,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+
+    tipoTextoActivo: {
+      color: colores.primario,
+    },
+
+    fotoBtn: {
+      backgroundColor: colores.primarioClaro,
+      borderRadius: 12,
+      padding: 20,
+      alignItems: 'center',
+      borderWidth: 2,
+      borderColor: colores.primario,
+      borderStyle: 'dashed',
+      marginBottom: 14,
+    },
+
+    fotoBtnIcono: {
+      fontSize: 36,
+      marginBottom: 6,
+    },
+
+    fotoBtnTexto: {
+      color: colores.primario,
+      fontWeight: '600',
+      fontSize: 15,
+    },
+
+    fotoBtnSub: {
+      color: colores.textoSecundario,
+      fontSize: 12,
+      marginTop: 2,
+    },
+
+    mapaPlaceholder: {
+      backgroundColor: colores.primarioClaro,
+      borderRadius: 12,
+      height: 140,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 2,
+      borderColor: colores.primario,
+      borderStyle: 'dashed',
+    },
+
+    mapaIcono: {
+      fontSize: 36,
+      marginBottom: 6,
+    },
+
+    mapaTexto: {
+      color: colores.primario,
+      fontWeight: '600',
+      fontSize: 15,
+    },
+
+    mapaSub: {
+      color: colores.textoSecundario,
+      fontSize: 12,
+      marginTop: 2,
+    },
+
+    coordTexto: {
+      color: colores.exito,
+      fontSize: 13,
+      marginTop: 8,
+      textAlign: 'center',
+      fontWeight: '600',
+    },
+
+    btnGuardar: {
+      backgroundColor: colores.primario,
+      padding: 17,
+      borderRadius: 12,
+      alignItems: 'center',
+      marginBottom: 30,
+      boxShadow:
+        '0px 2px 8px rgba(15, 23, 42, 0.08)',
+      elevation: 2,
+    },
+
+    btnGuardarTexto: {
+      color: colores.primarioTexto,
+      fontWeight: 'bold',
+      fontSize: 17,
+    },
+  });

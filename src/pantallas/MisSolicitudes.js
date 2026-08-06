@@ -14,14 +14,11 @@ import {
 } from 'react-native';
 
 import {
-  useFocusEffect,
-} from '@react-navigation/native';
-
-import {
-  COLORES,
   SOMBRA,
   RADIO,
 } from '../estilos/globales';
+import { useTema } from '../context/TemaContext';
+import useActualizacionAutomatica from '../hooks/useActualizacionAutomatica';
 
 import {
   API_BASE_URL,
@@ -66,23 +63,23 @@ function obtenerUrlImagen(ruta) {
   return `${API_BASE_URL}/${ruta}`;
 }
 
-function obtenerBadge(estado) {
+function obtenerBadge(estado, colores) {
   if (estado === 'aprobada') {
     return {
-      fondo: COLORES.exito,
+      fondo: colores.exito,
       texto: '✅ Aprobada',
     };
   }
 
   if (estado === 'rechazada') {
     return {
-      fondo: COLORES.peligro,
+      fondo: colores.peligro,
       texto: '❌ Rechazada',
     };
   }
 
   return {
-    fondo: COLORES.acento,
+    fondo: colores.advertencia,
     texto: '⏳ Pendiente',
   };
 }
@@ -109,6 +106,9 @@ export default function MisSolicitudes({
   navigation,
   route,
 }) {
+  const { colores } = useTema();
+  const s = crearStyles(colores);
+
   const usuario = route.params?.usuario;
 
   const [solicitudes, setSolicitudes] =
@@ -121,7 +121,7 @@ export default function MisSolicitudes({
     useState('');
 
   const cargarSolicitudes = useCallback(
-    async () => {
+    async (mostrarCarga = true) => {
       if (!usuario?.id) {
         setError(
           'No se encontró la información del usuario.'
@@ -131,7 +131,9 @@ export default function MisSolicitudes({
         return;
       }
 
-      setCargando(true);
+      if (mostrarCarga) {
+        setCargando(true);
+      }
       setError('');
 
       try {
@@ -179,10 +181,9 @@ export default function MisSolicitudes({
     [usuario?.id]
   );
 
-  useFocusEffect(
-    useCallback(() => {
-      cargarSolicitudes();
-    }, [cargarSolicitudes])
+  useActualizacionAutomatica(
+    cargarSolicitudes,
+    20
   );
 
   if (cargando) {
@@ -190,7 +191,7 @@ export default function MisSolicitudes({
       <View style={s.centrado}>
         <ActivityIndicator
           size="large"
-          color={COLORES.primario}
+          color={colores.primario}
         />
 
         <Text style={s.cargandoTexto}>
@@ -286,7 +287,8 @@ export default function MisSolicitudes({
               solicitud.arrendador || {};
 
             const badge = obtenerBadge(
-              solicitud.estado
+              solicitud.estado,
+              colores
             );
 
             const urlImagen =
@@ -413,45 +415,46 @@ export default function MisSolicitudes({
   );
 }
 
-const s = StyleSheet.create({
+const crearStyles = (colores) =>
+  StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: colores.fondo,
   },
 
   centrado: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORES.fondo,
+    backgroundColor: colores.fondo,
     padding: 24,
   },
 
   cargandoTexto: {
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
     marginTop: 12,
   },
 
   errorTexto: {
-    color: COLORES.peligro,
+    color: colores.peligro,
     textAlign: 'center',
     marginBottom: 16,
   },
 
   btnReintentar: {
-    backgroundColor: COLORES.primario,
+    backgroundColor: colores.primario,
     paddingHorizontal: 20,
     paddingVertical: 11,
     borderRadius: RADIO.sm,
   },
 
   btnReintentarTexto: {
-    color: '#ffffff',
+    color: colores.primarioTexto,
     fontWeight: 'bold',
   },
 
   header: {
-    backgroundColor: COLORES.primario,
+    backgroundColor: colores.primario,
     paddingTop: 55,
     paddingBottom: 20,
     paddingHorizontal: 20,
@@ -463,19 +466,19 @@ const s = StyleSheet.create({
   },
 
   volver: {
-    color: '#ffffff',
+    color: colores.primarioTexto,
     fontSize: 22,
     fontWeight: 'bold',
   },
 
   headerTitulo: {
-    color: '#ffffff',
+    color: colores.primarioTexto,
     fontSize: 20,
     fontWeight: 'bold',
   },
 
   headerSub: {
-    color: COLORES.primarioClaro,
+    color: colores.primarioClaro,
     fontSize: 13,
     marginTop: 3,
   },
@@ -494,18 +497,18 @@ const s = StyleSheet.create({
   vacioTitulo: {
     fontSize: 19,
     fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
     marginTop: 12,
   },
 
   vacioTexto: {
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
     textAlign: 'center',
     marginTop: 6,
   },
 
   btnExplorar: {
-    backgroundColor: COLORES.primario,
+    backgroundColor: colores.primario,
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: RADIO.sm,
@@ -513,7 +516,7 @@ const s = StyleSheet.create({
   },
 
   btnExplorarTexto: {
-    color: '#ffffff',
+    color: colores.primarioTexto,
     fontWeight: 'bold',
   },
 
@@ -523,7 +526,7 @@ const s = StyleSheet.create({
   },
 
   tarjeta: {
-    backgroundColor: COLORES.fondoTarjeta,
+    backgroundColor: colores.tarjeta,
     borderRadius: RADIO.lg,
     padding: 18,
     ...SOMBRA,
@@ -539,7 +542,7 @@ const s = StyleSheet.create({
     width: 70,
     height: 70,
     borderRadius: 16,
-    backgroundColor: COLORES.primarioClaro,
+    backgroundColor: colores.primarioClaro,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
@@ -561,29 +564,29 @@ const s = StyleSheet.create({
   propiedadTitulo: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   direccion: {
     fontSize: 13,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
     marginTop: 3,
   },
 
   fecha: {
     fontSize: 12,
-    color: COLORES.textoClaro,
+    color: colores.textoSecundario,
     marginTop: 3,
   },
 
   arrendador: {
     fontSize: 12,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
     marginTop: 3,
   },
 
   mensajeBox: {
-    backgroundColor: COLORES.fondo,
+    backgroundColor: colores.fondo,
     borderRadius: RADIO.sm,
     padding: 12,
     marginBottom: 14,
@@ -592,13 +595,13 @@ const s = StyleSheet.create({
   mensajeLabel: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: COLORES.primario,
+    color: colores.primario,
     marginBottom: 4,
   },
 
   mensajeTexto: {
     fontSize: 13,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
     fontStyle: 'italic',
     lineHeight: 18,
   },
@@ -612,7 +615,7 @@ const s = StyleSheet.create({
   precio: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: COLORES.primario,
+    color: colores.primario,
   },
 
   badge: {
@@ -622,33 +625,33 @@ const s = StyleSheet.create({
   },
 
   badgeTexto: {
-    color: '#ffffff',
+    color: colores.primarioTexto,
     fontSize: 12,
     fontWeight: 'bold',
   },
 
   aprobadaAlert: {
-    backgroundColor: COLORES.exitoClaro,
+    backgroundColor: colores.exitoClaro,
     borderRadius: RADIO.sm,
     padding: 10,
     marginTop: 12,
   },
 
   aprobadaTexto: {
-    color: COLORES.exito,
+    color: colores.exito,
     fontSize: 13,
     fontWeight: '600',
   },
 
   rechazadaAlert: {
-    backgroundColor: COLORES.peligroClaro,
+    backgroundColor: colores.peligroClaro,
     borderRadius: RADIO.sm,
     padding: 10,
     marginTop: 12,
   },
 
   rechazadaTexto: {
-    color: COLORES.peligro,
+    color: colores.peligro,
     fontSize: 13,
     fontWeight: '600',
   },

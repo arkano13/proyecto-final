@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -13,7 +13,8 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.gelsynest.RentaFacil"
     },
     "android": {
       "adaptiveIcon": {
@@ -21,13 +22,54 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.gelsynest.RentaFacil"
+      "package": "com.gelsynest.RentaFacil",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "RentaFacil necesita acceder a tus fotografías para adjuntarlas a las propiedades.",
+          "cameraPermission": "RentaFacil necesita utilizar la cámara para tomar fotografías de las propiedades.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "RentaFacil necesita tu ubicación para registrar la ubicación de las propiedades.",
+          "locationAlwaysAndWhenInUsePermission": "RentaFacil necesita tu ubicación para registrar la ubicación de las propiedades.",
+          "isAndroidBackgroundLocationEnabled": false
+        }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "RentaFacil necesita acceder al calendario para agregar recordatorios de contratos y pagos.",
+          "remindersPermission": "RentaFacil necesita acceder a tus recordatorios."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#2563eb",
+          "defaultChannel": "rentafacil",
+          "enableBackgroundRemoteNotifications": false
+        }
+      ],
+
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "RentaFacil necesita utilizar la cámara para escanear el código QR de inicio de sesión.",
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": true
+        }
+      ]
     ],
     "extra": {
       "eas": {

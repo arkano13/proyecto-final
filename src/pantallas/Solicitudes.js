@@ -14,17 +14,20 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
 import { API_BASE_URL, API_URLS } from '../config/config';
 import {
-  COLORES,
   RADIO,
 } from '../estilos/globales';
+import { useTema } from '../context/TemaContext';
+import useActualizacionAutomatica from '../hooks/useActualizacionAutomatica';
 
 export default function Solicitudes({
   route,
   navigation,
 }) {
+  const { colores } = useTema();
+  const styles = crearStyles(colores);
+
   const usuario = route?.params?.usuario;
 
   const [solicitudes, setSolicitudes] = useState([]);
@@ -139,10 +142,9 @@ export default function Solicitudes({
     [obtenerArrendadorId]
   );
 
-  useFocusEffect(
-    useCallback(() => {
-      cargarSolicitudes();
-    }, [cargarSolicitudes])
+  useActualizacionAutomatica(
+    cargarSolicitudes,
+    20
   );
 
   const mostrarMensaje = (
@@ -452,23 +454,23 @@ export default function Solicitudes({
   const obtenerColorEstado = (estado) => {
     if (estado === 'aprobada') {
       return {
-        fondo: COLORES.exitoClaro,
-        texto: COLORES.exito,
+        fondo: colores.exitoClaro,
+        texto: colores.exito,
         icono: 'checkmark-circle',
       };
     }
 
     if (estado === 'rechazada') {
       return {
-        fondo: COLORES.peligroClaro,
-        texto: COLORES.peligro,
+        fondo: colores.peligroClaro,
+        texto: colores.peligro,
         icono: 'close-circle',
       };
     }
 
     return {
-      fondo: COLORES.acentoClaro,
-      texto: '#b45309',
+      fondo: colores.advertenciaClaro,
+      texto: colores.advertencia,
       icono: 'time',
     };
   };
@@ -485,7 +487,7 @@ export default function Solicitudes({
       <View style={styles.centro}>
         <ActivityIndicator
           size="large"
-          color={COLORES.primario}
+          color={colores.primario}
         />
 
         <Text style={styles.textoCargando}>
@@ -506,7 +508,7 @@ export default function Solicitudes({
             <Ionicons
               name="arrow-back"
               size={24}
-              color="#ffffff"
+              color={colores.primarioTexto}
             />
           </TouchableOpacity>
 
@@ -519,7 +521,7 @@ export default function Solicitudes({
             <Ionicons
               name="refresh"
               size={23}
-              color="#ffffff"
+              color={colores.primarioTexto}
             />
           </TouchableOpacity>
         </View>
@@ -541,7 +543,7 @@ export default function Solicitudes({
           <Ionicons
             name="alert-circle-outline"
             size={50}
-            color={COLORES.peligro}
+            color={colores.peligro}
           />
 
           <Text style={styles.errorTexto}>
@@ -566,7 +568,7 @@ export default function Solicitudes({
           <Ionicons
             name="document-text-outline"
             size={70}
-            color={COLORES.textoClaro}
+            color={colores.textoSecundario}
           />
 
           <Text style={styles.vacioTitulo}>
@@ -626,7 +628,7 @@ export default function Solicitudes({
                         name="home-outline"
                         size={45}
                         color={
-                          COLORES.textoClaro
+                          colores.textoSecundario
                         }
                       />
 
@@ -722,7 +724,7 @@ export default function Solicitudes({
                           name="location-outline"
                           size={18}
                           color={
-                            COLORES.textoSecundario
+                            colores.textoSecundario
                           }
                         />
 
@@ -754,7 +756,7 @@ export default function Solicitudes({
                       <Ionicons
                         name="person-outline"
                         size={18}
-                        color={COLORES.primario}
+                        color={colores.primario}
                       />
 
                       <Text
@@ -780,7 +782,7 @@ export default function Solicitudes({
                           name="mail-outline"
                           size={18}
                           color={
-                            COLORES.primario
+                            colores.primario
                           }
                         />
 
@@ -808,7 +810,7 @@ export default function Solicitudes({
                           name="call-outline"
                           size={18}
                           color={
-                            COLORES.primario
+                            colores.primario
                           }
                         />
 
@@ -971,27 +973,28 @@ export default function Solicitudes({
   );
 }
 
-const styles = StyleSheet.create({
+const crearStyles = (colores) =>
+  StyleSheet.create({
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: colores.fondo,
   },
 
   centro: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORES.fondo,
+    backgroundColor: colores.fondo,
   },
 
   textoCargando: {
     marginTop: 12,
     fontSize: 15,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
   },
 
   encabezado: {
-    backgroundColor: COLORES.primario,
+    backgroundColor: colores.primario,
     paddingTop: 48,
     paddingHorizontal: 20,
     paddingBottom: 22,
@@ -1024,15 +1027,16 @@ const styles = StyleSheet.create({
   },
 
   tituloPantalla: {
-    color: '#ffffff',
+    color: colores.primarioTexto,
     fontSize: 24,
     fontWeight: 'bold',
   },
 
   subtituloPantalla: {
-    color: COLORES.primarioClaro,
+    color: colores.primarioTexto,
     fontSize: 14,
     marginTop: 4,
+    opacity: 0.9,
   },
 
   lista: {
@@ -1041,12 +1045,12 @@ const styles = StyleSheet.create({
   },
 
   tarjeta: {
-    backgroundColor: COLORES.fondoTarjeta,
+    backgroundColor: colores.tarjeta,
     borderRadius: RADIO.lg,
     marginBottom: 17,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: COLORES.borde,
+    borderColor: colores.borde,
     boxShadow:
       '0px 3px 10px rgba(15, 23, 42, 0.10)',
     elevation: 3,
@@ -1055,20 +1059,20 @@ const styles = StyleSheet.create({
   imagenPropiedad: {
     width: '100%',
     height: 185,
-    backgroundColor: COLORES.borde,
+    backgroundColor: colores.borde,
   },
 
   sinImagen: {
     height: 165,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f1f5f9',
+    backgroundColor: colores.campo,
   },
 
   textoSinImagen: {
     marginTop: 6,
     fontSize: 13,
-    color: COLORES.textoClaro,
+    color: colores.textoSecundario,
   },
 
   contenidoTarjeta: {
@@ -1089,13 +1093,13 @@ const styles = StyleSheet.create({
   tituloPropiedad: {
     fontSize: 19,
     fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   fechaSolicitud: {
     marginTop: 4,
     fontSize: 13,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
   },
 
   estado: {
@@ -1122,41 +1126,41 @@ const styles = StyleSheet.create({
   textoInformacion: {
     flex: 1,
     fontSize: 14,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
   },
 
   separador: {
     height: 1,
-    backgroundColor: COLORES.borde,
+    backgroundColor: colores.borde,
     marginVertical: 15,
   },
 
   subtitulo: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   mensajeContenedor: {
     marginTop: 15,
     padding: 13,
     borderRadius: RADIO.sm,
-    backgroundColor: '#f8fafc',
+    backgroundColor: colores.campo,
     borderLeftWidth: 4,
-    borderLeftColor: COLORES.primario,
+    borderLeftColor: colores.primario,
   },
 
   mensajeTitulo: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
     marginBottom: 5,
   },
 
   mensajeTexto: {
     fontSize: 14,
     lineHeight: 21,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
   },
 
   botonesContenedor: {
@@ -1176,11 +1180,11 @@ const styles = StyleSheet.create({
   },
 
   botonRechazar: {
-    backgroundColor: COLORES.peligro,
+    backgroundColor: colores.peligro,
   },
 
   botonAprobar: {
-    backgroundColor: COLORES.exito,
+    backgroundColor: colores.exito,
   },
 
   botonDeshabilitado: {
@@ -1197,7 +1201,7 @@ const styles = StyleSheet.create({
     minHeight: 49,
     marginTop: 17,
     borderRadius: RADIO.sm,
-    backgroundColor: '#7c3aed',
+    backgroundColor: colores.primario,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1205,7 +1209,7 @@ const styles = StyleSheet.create({
   },
 
   textoCrearContrato: {
-    color: '#ffffff',
+    color: colores.primarioTexto,
     fontSize: 15,
     fontWeight: 'bold',
   },
@@ -1222,18 +1226,18 @@ const styles = StyleSheet.create({
     marginBottom: 18,
     textAlign: 'center',
     fontSize: 15,
-    color: COLORES.peligro,
+    color: colores.peligro,
   },
 
   botonReintentar: {
-    backgroundColor: COLORES.primario,
+    backgroundColor: colores.primario,
     paddingHorizontal: 22,
     paddingVertical: 12,
     borderRadius: RADIO.sm,
   },
 
   textoReintentar: {
-    color: '#ffffff',
+    color: colores.primarioTexto,
     fontWeight: 'bold',
   },
 
@@ -1248,7 +1252,7 @@ const styles = StyleSheet.create({
     marginTop: 15,
     fontSize: 21,
     fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   vacioDescripcion: {
@@ -1256,6 +1260,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     textAlign: 'center',
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
   },
 });

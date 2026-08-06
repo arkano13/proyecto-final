@@ -10,12 +10,16 @@ import {
   View,
   ActivityIndicator,
   Alert,
+  StyleSheet,
 } from 'react-native';
 
-import styles from '../estilos/RegistroStyles';
 import { API_URLS } from '../config/config';
+import { useTema } from '../context/TemaContext';
 
 export default function Registro({ navigation }) {
+  const { colores } = useTema();
+  const styles = crearStyles(colores);
+
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [telefono, setTelefono] = useState('');
@@ -24,7 +28,8 @@ export default function Registro({ navigation }) {
   const [rol, setRol] = useState('inquilino');
 
   const [error, setError] = useState('');
-  const [cargando, setCargando] = useState(false);
+  const [cargando, setCargando] =
+    useState(false);
 
   const manejarRegistro = async () => {
     if (
@@ -34,12 +39,16 @@ export default function Registro({ navigation }) {
       !clave.trim() ||
       !confirmar.trim()
     ) {
-      setError('Por favor completa todos los campos.');
+      setError(
+        'Por favor completa todos los campos.'
+      );
       return;
     }
 
     if (clave !== confirmar) {
-      setError('Las contraseñas no coinciden.');
+      setError(
+        'Las contraseñas no coinciden.'
+      );
       return;
     }
 
@@ -68,16 +77,11 @@ export default function Registro({ navigation }) {
         API_URLS.REGISTRAR_USUARIO,
         {
           method: 'POST',
-
           headers: {
-            'Content-Type': 'application/json',
+            'Content-Type':
+              'application/json',
           },
-
           body: JSON.stringify({
-            /*
-             * Utilizamos el correo como nombre de usuario.
-             * Así el usuario puede iniciar sesión con su correo.
-             */
             usuario: correoLimpio,
             nombre_completo: nombre.trim(),
             correo: correoLimpio,
@@ -93,9 +97,19 @@ export default function Registro({ navigation }) {
       if (!respuesta.ok || !datos.exito) {
         setError(
           datos.mensaje ||
-          'No se pudo registrar el usuario.'
+            'No se pudo registrar el usuario.'
         );
+        return;
+      }
 
+      if (
+        Platform.OS === 'web' &&
+        typeof window !== 'undefined'
+      ) {
+        window.alert(
+          'Tu cuenta fue creada correctamente.'
+        );
+        navigation.replace('Login');
         return;
       }
 
@@ -126,7 +140,7 @@ export default function Registro({ navigation }) {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={styles.pantalla}
       behavior={
         Platform.OS === 'ios'
           ? 'padding'
@@ -212,7 +226,9 @@ export default function Registro({ navigation }) {
         <TextInput
           style={styles.input}
           placeholder="Nombre completo"
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor={
+            colores.textoSecundario
+          }
           value={nombre}
           onChangeText={setNombre}
           editable={!cargando}
@@ -221,7 +237,9 @@ export default function Registro({ navigation }) {
         <TextInput
           style={styles.input}
           placeholder="Correo electrónico"
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor={
+            colores.textoSecundario
+          }
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
@@ -232,7 +250,9 @@ export default function Registro({ navigation }) {
         <TextInput
           style={styles.input}
           placeholder="Teléfono"
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor={
+            colores.textoSecundario
+          }
           value={telefono}
           onChangeText={setTelefono}
           keyboardType="phone-pad"
@@ -242,7 +262,9 @@ export default function Registro({ navigation }) {
         <TextInput
           style={styles.input}
           placeholder="Contraseña"
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor={
+            colores.textoSecundario
+          }
           value={clave}
           onChangeText={setClave}
           secureTextEntry
@@ -252,7 +274,9 @@ export default function Registro({ navigation }) {
         <TextInput
           style={styles.input}
           placeholder="Confirmar contraseña"
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor={
+            colores.textoSecundario
+          }
           value={confirmar}
           onChangeText={setConfirmar}
           secureTextEntry
@@ -265,7 +289,9 @@ export default function Registro({ navigation }) {
           disabled={cargando}
         >
           {cargando ? (
-            <ActivityIndicator color="#ffffff" />
+            <ActivityIndicator
+              color={colores.primarioTexto}
+            />
           ) : (
             <Text style={styles.btnTexto}>
               Registrarme
@@ -285,3 +311,137 @@ export default function Registro({ navigation }) {
     </KeyboardAvoidingView>
   );
 }
+
+const crearStyles = (colores) =>
+  StyleSheet.create({
+    pantalla: {
+      flex: 1,
+      backgroundColor: colores.fondo,
+    },
+
+    container: {
+      flexGrow: 1,
+      backgroundColor: colores.fondo,
+      paddingHorizontal: 28,
+      paddingVertical: 50,
+    },
+
+    titulo: {
+      fontSize: 28,
+      fontWeight: 'bold',
+      color: colores.primario,
+      textAlign: 'center',
+    },
+
+    sub: {
+      fontSize: 15,
+      color: colores.textoSecundario,
+      textAlign: 'center',
+      marginBottom: 28,
+      marginTop: 4,
+    },
+
+    label: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colores.textoPrincipal,
+      marginBottom: 12,
+    },
+
+    rolContainer: {
+      flexDirection: 'row',
+      gap: 12,
+      marginBottom: 24,
+    },
+
+    rolBtn: {
+      flex: 1,
+      backgroundColor: colores.tarjeta,
+      borderWidth: 2,
+      borderColor: colores.borde,
+      borderRadius: 16,
+      padding: 16,
+      alignItems: 'center',
+      boxShadow:
+        '0px 2px 8px rgba(15, 23, 42, 0.08)',
+      elevation: 2,
+    },
+
+    rolActivo: {
+      borderColor: colores.primario,
+      backgroundColor: colores.primarioClaro,
+    },
+
+    rolIcon: {
+      fontSize: 32,
+      marginBottom: 6,
+    },
+
+    rolTexto: {
+      fontWeight: 'bold',
+      color: colores.textoSecundario,
+      fontSize: 15,
+    },
+
+    rolTextoActivo: {
+      color: colores.primario,
+    },
+
+    rolDesc: {
+      fontSize: 12,
+      color: colores.textoSecundario,
+      marginTop: 3,
+      textAlign: 'center',
+    },
+
+    input: {
+      backgroundColor: colores.campo,
+      borderWidth: 1.5,
+      borderColor: colores.borde,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      fontSize: 16,
+      marginBottom: 14,
+      color: colores.textoPrincipal,
+      boxShadow:
+        '0px 2px 8px rgba(15, 23, 42, 0.08)',
+      elevation: 2,
+    },
+
+    btn: {
+      backgroundColor: colores.primario,
+      padding: 17,
+      borderRadius: 12,
+      alignItems: 'center',
+      marginTop: 6,
+      boxShadow:
+        '0px 2px 8px rgba(15, 23, 42, 0.08)',
+      elevation: 2,
+    },
+
+    btnTexto: {
+      color: colores.primarioTexto,
+      fontWeight: 'bold',
+      fontSize: 17,
+      letterSpacing: 0.5,
+    },
+
+    linkTexto: {
+      textAlign: 'center',
+      color: colores.primario,
+      fontWeight: '600',
+      marginTop: 22,
+      fontSize: 15,
+    },
+
+    errorTexto: {
+      color: colores.peligro,
+      textAlign: 'center',
+      marginBottom: 12,
+      fontWeight: '600',
+      backgroundColor: colores.peligroClaro,
+      padding: 10,
+      borderRadius: 8,
+    },
+  });

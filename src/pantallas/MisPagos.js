@@ -12,16 +12,17 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
 import { API_BASE_URL, API_URLS } from '../config/config';
-import {
-  COLORES,
-  RADIO,
-} from '../estilos/globales';
+import { RADIO } from '../estilos/globales';
+import { useTema } from '../context/TemaContext';
+import useActualizacionAutomatica from '../hooks/useActualizacionAutomatica';
 
 export default function MisPagos({
   route,
 }) {
+  const { colores } = useTema();
+  const styles = crearStyles(colores);
+
   const usuario = route?.params?.usuario;
 
   const [pagos, setPagos] = useState([]);
@@ -36,7 +37,9 @@ export default function MisPagos({
     );
   }, [usuario]);
 
-  const cargarPagos = useCallback(async () => {
+  const cargarPagos = useCallback(async (
+    mostrarCarga = true
+  ) => {
     const inquilinoId =
       obtenerInquilinoId();
 
@@ -50,7 +53,9 @@ export default function MisPagos({
     }
 
     try {
-      setCargando(true);
+      if (mostrarCarga) {
+        setCargando(true);
+      }
       setError('');
 
       const respuesta = await fetch(
@@ -125,10 +130,9 @@ export default function MisPagos({
     }
   }, [obtenerInquilinoId]);
 
-  useFocusEffect(
-    useCallback(() => {
-      cargarPagos();
-    }, [cargarPagos])
+  useActualizacionAutomatica(
+    cargarPagos,
+    20
   );
 
   const obtenerPagoId = (pago) => {
@@ -369,7 +373,7 @@ export default function MisPagos({
       <View style={styles.centro}>
         <ActivityIndicator
           size="large"
-          color={COLORES.primario}
+          color={colores.primario}
         />
 
         <Text style={styles.textoCargando}>
@@ -386,7 +390,7 @@ export default function MisPagos({
           <Ionicons
             name="wallet-outline"
             size={31}
-            color={COLORES.primario}
+            color={colores.primario}
           />
         </View>
 
@@ -414,7 +418,7 @@ export default function MisPagos({
           <Ionicons
             name="refresh"
             size={22}
-            color={COLORES.primario}
+            color={colores.primario}
           />
         </TouchableOpacity>
       </View>
@@ -424,7 +428,7 @@ export default function MisPagos({
           <Ionicons
             name="alert-circle-outline"
             size={55}
-            color={COLORES.peligro}
+            color={colores.peligro}
           />
 
           <Text style={styles.errorTexto}>
@@ -447,7 +451,7 @@ export default function MisPagos({
           <Ionicons
             name="receipt-outline"
             size={70}
-            color={COLORES.textoClaro}
+            color={colores.textoSecundario}
           />
 
           <Text style={styles.vacioTitulo}>
@@ -466,7 +470,7 @@ export default function MisPagos({
             <Ionicons
               name="refresh-outline"
               size={20}
-              color="#ffffff"
+              color={colores.primarioTexto}
             />
 
             <Text
@@ -527,7 +531,7 @@ export default function MisPagos({
                         name="home-outline"
                         size={26}
                         color={
-                          COLORES.textoClaro
+                          colores.textoSecundario
                         }
                       />
                     </View>
@@ -575,8 +579,8 @@ export default function MisPagos({
                       size={15}
                       color={
                         estaAnulado
-                          ? COLORES.peligro
-                          : COLORES.exito
+                          ? colores.peligro
+                          : colores.exito
                       }
                     />
 
@@ -585,8 +589,8 @@ export default function MisPagos({
                         styles.estadoTexto,
                         {
                           color: estaAnulado
-                            ? COLORES.peligro
-                            : COLORES.exito,
+                            ? colores.peligro
+                            : colores.exito,
                         },
                       ]}
                     >
@@ -607,7 +611,7 @@ export default function MisPagos({
                       name="location-outline"
                       size={17}
                       color={
-                        COLORES.textoSecundario
+                        colores.textoSecundario
                       }
                     />
 
@@ -660,7 +664,7 @@ export default function MisPagos({
                       <Ionicons
                         name="calendar-outline"
                         size={19}
-                        color={COLORES.primario}
+                        color={colores.primario}
                       />
                     </View>
 
@@ -688,7 +692,7 @@ export default function MisPagos({
                       <Ionicons
                         name={metodo.icono}
                         size={19}
-                        color={COLORES.primario}
+                        color={colores.primario}
                       />
                     </View>
 
@@ -720,7 +724,7 @@ export default function MisPagos({
                     <Ionicons
                       name="receipt-outline"
                       size={18}
-                      color={COLORES.primario}
+                      color={colores.primario}
                     />
 
                     <Text
@@ -777,7 +781,7 @@ export default function MisPagos({
                       name="mail-outline"
                       size={18}
                       color={
-                        COLORES.textoSecundario
+                        colores.textoSecundario
                       }
                     />
 
@@ -813,33 +817,34 @@ export default function MisPagos({
   );
 }
 
-const styles = StyleSheet.create({
+const crearStyles = (colores) =>
+  StyleSheet.create({
   pantalla: {
     flex: 1,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: colores.fondo,
   },
 
   centro: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORES.fondo,
+    backgroundColor: colores.fondo,
   },
 
   textoCargando: {
     marginTop: 12,
     fontSize: 15,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
   },
 
   resumen: {
-    backgroundColor: COLORES.fondoTarjeta,
+    backgroundColor: colores.tarjeta,
     margin: 16,
     marginBottom: 0,
     padding: 17,
     borderRadius: RADIO.lg,
     borderWidth: 1,
-    borderColor: COLORES.borde,
+    borderColor: colores.borde,
     flexDirection: 'row',
     alignItems: 'center',
     boxShadow:
@@ -851,7 +856,7 @@ const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 17,
-    backgroundColor: COLORES.primarioClaro,
+    backgroundColor: colores.primarioClaro,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -863,27 +868,27 @@ const styles = StyleSheet.create({
 
   resumenEtiqueta: {
     fontSize: 13,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
   },
 
   resumenMonto: {
     marginTop: 2,
     fontSize: 24,
     fontWeight: 'bold',
-    color: COLORES.primario,
+    color: colores.primario,
   },
 
   resumenCantidad: {
     marginTop: 2,
     fontSize: 12,
-    color: COLORES.textoClaro,
+    color: colores.textoSecundario,
   },
 
   botonRecargar: {
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: '#f0fdfa',
+    backgroundColor: colores.primarioClaro,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -894,12 +899,12 @@ const styles = StyleSheet.create({
   },
 
   tarjeta: {
-    backgroundColor: COLORES.fondoTarjeta,
+    backgroundColor: colores.tarjeta,
     borderRadius: RADIO.lg,
     padding: 17,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: COLORES.borde,
+    borderColor: colores.borde,
     boxShadow:
       '0px 2px 8px rgba(15, 23, 42, 0.08)',
     elevation: 2,
@@ -907,7 +912,7 @@ const styles = StyleSheet.create({
 
   tarjetaAnulada: {
     opacity: 0.72,
-    backgroundColor: '#fafafa',
+    backgroundColor: colores.campo,
   },
 
   encabezadoTarjeta: {
@@ -919,14 +924,14 @@ const styles = StyleSheet.create({
     width: 54,
     height: 54,
     borderRadius: 14,
-    backgroundColor: COLORES.borde,
+    backgroundColor: colores.borde,
   },
 
   sinImagen: {
     width: 54,
     height: 54,
     borderRadius: 14,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: colores.campo,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -939,13 +944,13 @@ const styles = StyleSheet.create({
   tituloPropiedad: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   arrendador: {
     marginTop: 3,
     fontSize: 12,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
   },
 
   estado: {
@@ -958,11 +963,11 @@ const styles = StyleSheet.create({
   },
 
   estadoPagado: {
-    backgroundColor: COLORES.exitoClaro,
+    backgroundColor: colores.exitoClaro,
   },
 
   estadoAnulado: {
-    backgroundColor: COLORES.peligroClaro,
+    backgroundColor: colores.peligroClaro,
   },
 
   estadoTexto: {
@@ -980,14 +985,14 @@ const styles = StyleSheet.create({
   textoInformacion: {
     flex: 1,
     fontSize: 13,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
   },
 
   pagoPrincipal: {
     marginTop: 15,
     padding: 14,
     borderRadius: RADIO.sm,
-    backgroundColor: '#f0fdfa',
+    backgroundColor: colores.primarioClaro,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -995,24 +1000,24 @@ const styles = StyleSheet.create({
 
   periodoEtiqueta: {
     fontSize: 11,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
   },
 
   periodoTexto: {
     marginTop: 3,
     fontSize: 15,
     fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   monto: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: COLORES.primario,
+    color: colores.primario,
   },
 
   montoAnulado: {
-    color: COLORES.textoClaro,
+    color: colores.textoSecundario,
     textDecorationLine: 'line-through',
   },
 
@@ -1025,7 +1030,7 @@ const styles = StyleSheet.create({
     minHeight: 55,
     padding: 10,
     borderRadius: RADIO.sm,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: colores.fondo,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 9,
@@ -1035,21 +1040,21 @@ const styles = StyleSheet.create({
     width: 35,
     height: 35,
     borderRadius: 10,
-    backgroundColor: COLORES.primarioClaro,
+    backgroundColor: colores.primarioClaro,
     justifyContent: 'center',
     alignItems: 'center',
   },
 
   detalleEtiqueta: {
     fontSize: 10,
-    color: COLORES.textoClaro,
+    color: colores.textoSecundario,
   },
 
   detalleValor: {
     marginTop: 2,
     fontSize: 13,
     fontWeight: '600',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   informacionAdicional: {
@@ -1062,35 +1067,35 @@ const styles = StyleSheet.create({
   informacionEtiqueta: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   informacionValor: {
     flex: 1,
     fontSize: 13,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
   },
 
   observacionContenedor: {
     marginTop: 12,
     padding: 11,
     borderRadius: RADIO.sm,
-    backgroundColor: COLORES.fondo,
+    backgroundColor: colores.fondo,
     borderLeftWidth: 3,
-    borderLeftColor: COLORES.primario,
+    borderLeftColor: colores.primario,
   },
 
   observacionTitulo: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   observacionTexto: {
     marginTop: 4,
     fontSize: 13,
     lineHeight: 19,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
   },
 
   contactoContenedor: {
@@ -1103,20 +1108,20 @@ const styles = StyleSheet.create({
   contactoTexto: {
     flex: 1,
     fontSize: 13,
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
   },
 
   numeroPago: {
     marginTop: 14,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: COLORES.borde,
+    borderTopColor: colores.borde,
     alignItems: 'center',
   },
 
   numeroPagoTexto: {
     fontSize: 11,
-    color: COLORES.textoClaro,
+    color: colores.textoSecundario,
   },
 
   estadoPantalla: {
@@ -1131,7 +1136,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
     fontSize: 15,
     textAlign: 'center',
-    color: COLORES.peligro,
+    color: colores.peligro,
   },
 
   vacioTitulo: {
@@ -1139,7 +1144,7 @@ const styles = StyleSheet.create({
     fontSize: 21,
     fontWeight: 'bold',
     textAlign: 'center',
-    color: COLORES.textoPrincipal,
+    color: colores.textoPrincipal,
   },
 
   vacioTexto: {
@@ -1148,14 +1153,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     textAlign: 'center',
-    color: COLORES.textoSecundario,
+    color: colores.textoSecundario,
   },
 
   botonActualizar: {
     minHeight: 46,
     paddingHorizontal: 20,
     borderRadius: RADIO.sm,
-    backgroundColor: COLORES.primario,
+    backgroundColor: colores.primario,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1163,7 +1168,7 @@ const styles = StyleSheet.create({
   },
 
   textoActualizar: {
-    color: '#ffffff',
+    color: colores.primarioTexto,
     fontSize: 14,
     fontWeight: 'bold',
   },

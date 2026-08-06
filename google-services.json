@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "186450002924",
+    "project_id": "movil2-aadd8",
+    "storage_bucket": "movil2-aadd8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:186450002924:android:1844121f89ec23eb7c76c9",
+        "android_client_info": {
+          "package_name": "com.gelsynest.RentaFacil"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCDXaQ7_2PWo8IoU-oCH-wcooE7UKGeOUM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
