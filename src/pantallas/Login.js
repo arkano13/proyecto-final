@@ -28,6 +28,10 @@ import {
 } from "../servicios/notificaciones";
 
 import {
+  guardarSesion,
+} from "../servicios/sesion";
+
+import {
   useTema,
 } from "../context/TemaContext";
 
@@ -148,6 +152,15 @@ export default function Login({
          * para notificaciones.
          */
         registrarNotificaciones(
+          usuario
+        );
+
+        /*
+         * Guardar la sesión en el
+         * teléfono para que no se
+         * cierre al reabrir la app.
+         */
+        await guardarSesion(
           usuario
         );
 

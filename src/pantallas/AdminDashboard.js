@@ -21,6 +21,10 @@ import {
 } from '../config/config';
 
 import {
+  borrarSesion,
+} from '../servicios/sesion';
+
+import {
   useTema,
 } from '../context/TemaContext';
 
@@ -289,8 +293,10 @@ export default function AdminDashboard({
     );
   };
 
-  const cerrarSesion = () => {
+  const cerrarSesion = async () => {
     limpiarTemaUsuario();
+
+    await borrarSesion();
 
     navigation.replace(
       'Login'

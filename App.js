@@ -1,4 +1,7 @@
-import React from "react";
+import React, {
+  useState,
+  useEffect,
+} from "react";
 
 import {
   View,
@@ -6,6 +9,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 
 import {
@@ -24,6 +28,11 @@ import { StatusBar } from "expo-status-bar";
 import {
   useTema,
 } from "./src/context/TemaContext";
+
+import {
+  obtenerSesion,
+  borrarSesion,
+} from "./src/servicios/sesion";
 
 // Autenticación
 import Login from "./src/pantallas/Login";
@@ -440,11 +449,13 @@ function InquilinoTabs({
           style={
             styles.botonCerrarSesion
           }
-          onPress={() =>
+          onPress={async () => {
+            await borrarSesion();
+
             navigation.replace(
               "Login"
-            )
-          }
+            );
+          }}
         >
           <Ionicons
             name="log-out-outline"
@@ -470,6 +481,48 @@ export default function App() {
     temaOscuro,
     colores,
   } = useTema();
+
+  const [
+    verificandoSesion,
+    setVerificandoSesion,
+  ] = useState(true);
+
+  const [
+    usuarioSesion,
+    setUsuarioSesion,
+  ] = useState(null);
+
+  /*
+   * Al abrir la app se consulta si
+   * hay una sesión guardada en el
+   * teléfono para entrar
+   * automáticamente.
+   */
+  useEffect(() => {
+    const verificarSesion =
+      async () => {
+        const usuario =
+          await obtenerSesion();
+
+        setUsuarioSesion(usuario);
+        setVerificandoSesion(false);
+      };
+
+    verificarSesion();
+  }, []);
+
+  const rolUsuario = String(
+    usuarioSesion?.rol ||
+      usuarioSesion?.usuario_rol ||
+      ""
+  ).toLowerCase();
+
+  const pantallaInicial =
+    !usuarioSesion
+      ? "Login"
+      : rolUsuario === "arrendador"
+      ? "AdminDashboard"
+      : "InquilinoTabs";
 
   const temaBase =
     temaOscuro
@@ -502,6 +555,36 @@ export default function App() {
     },
   };
 
+  if (verificandoSesion) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor:
+            colores.fondo,
+        }}
+      >
+        <StatusBar
+          style={
+            temaOscuro
+              ? "light"
+              : "dark"
+          }
+          backgroundColor={
+            colores.barraEstado
+          }
+        />
+
+        <ActivityIndicator
+          size="large"
+          color={colores.primario}
+        />
+      </View>
+    );
+  }
+
   return (
     <>
       <StatusBar
@@ -519,7 +602,9 @@ export default function App() {
         theme={temaNavegacion}
       >
         <Stack.Navigator
-          initialRouteName="Login"
+          initialRouteName={
+            pantallaInicial
+          }
           screenOptions={{
             headerBackTitle:
               "Atrás",
@@ -598,6 +683,9 @@ export default function App() {
             component={
               AdminDashboard
             }
+            initialParams={{
+              usuario: usuarioSesion,
+            }}
             options={{
               headerShown: false,
             }}
@@ -707,6 +795,9 @@ export default function App() {
             component={
               InquilinoTabs
             }
+            initialParams={{
+              usuario: usuarioSesion,
+            }}
             options={{
               headerShown: false,
             }}

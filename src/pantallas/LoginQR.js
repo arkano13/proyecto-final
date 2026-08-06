@@ -25,6 +25,10 @@ import {
   registrarNotificaciones,
 } from "../servicios/notificaciones";
 
+import {
+  guardarSesion,
+} from "../servicios/sesion";
+
 import { useTema } from "../context/TemaContext";
 
 export default function LoginQR({ navigation }) {
@@ -319,6 +323,15 @@ export default function LoginQR({ navigation }) {
         );
 
         registrarNotificaciones(
+          datos.usuario
+        );
+
+        /*
+         * Guardar la sesión en el
+         * teléfono para que no se
+         * cierre al reabrir la app.
+         */
+        await guardarSesion(
           datos.usuario
         );
 
