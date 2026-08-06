@@ -507,12 +507,13 @@ export default function RegistrarPago({
       behavior={
         Platform.OS === 'ios'
           ? 'padding'
-          : undefined
+          : 'height'
       }
     >
       <ScrollView
         contentContainerStyle={styles.contenido}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.encabezado}>

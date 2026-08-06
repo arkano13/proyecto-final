@@ -992,7 +992,7 @@ export default function Perfil({
       behavior={
         Platform.OS === 'ios'
           ? 'padding'
-          : undefined
+          : 'height'
       }
     >
       <ScrollView

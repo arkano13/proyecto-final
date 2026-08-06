@@ -295,7 +295,7 @@ export default function RecuperarClave({
       behavior={
         Platform.OS === 'ios'
           ? 'padding'
-          : undefined
+          : 'height'
       }
     >
       <ScrollView
@@ -303,6 +303,7 @@ export default function RecuperarClave({
           styles.container
         }
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
         <View style={styles.logoContainer}>
           <View style={styles.logoCirculo}>

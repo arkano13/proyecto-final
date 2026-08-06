@@ -144,12 +144,13 @@ export default function Registro({ navigation }) {
       behavior={
         Platform.OS === 'ios'
           ? 'padding'
-          : undefined
+          : 'height'
       }
     >
       <ScrollView
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
         <Text style={styles.titulo}>
           Crear cuenta

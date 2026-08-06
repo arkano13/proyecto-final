@@ -11,6 +11,7 @@ import {
   Image,
   Platform,
   StyleSheet,
+  KeyboardAvoidingView,
 } from "react-native";
 
 import * as ImagePicker from "expo-image-picker";
@@ -554,7 +555,14 @@ export default function FormPropiedad({
   };
 
   return (
-    <View style={styles.container}>
+     <KeyboardAvoidingView
+      style={styles.container}
+      behavior={
+        Platform.OS === 'ios'
+          ? 'padding'
+          : 'height'
+      }
+    > 
       <View style={styles.header}>
         <Text
           style={styles.headerTitulo}
@@ -574,6 +582,7 @@ export default function FormPropiedad({
           styles.scroll
         }
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
         <View style={styles.seccion}>
           <Text
@@ -837,7 +846,7 @@ export default function FormPropiedad({
           )}
         </TouchableOpacity>
       </ScrollView>
-    </View>
+      </KeyboardAvoidingView>
   );
 }
 
@@ -880,7 +889,7 @@ const crearStyles = (colores) =>
 
     scroll: {
       padding: 20,
-      paddingBottom: 35,
+       paddingBottom: 120,
     },
 
     seccion: {

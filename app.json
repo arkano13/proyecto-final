@@ -26,6 +26,7 @@
       },
 
       "edgeToEdgeEnabled": true,
+      "softwareKeyboardLayoutMode": "resize",
       "package": "com.gelsynest.RentaFacil",
       "googleServicesFile": "./google-services.json"
     },

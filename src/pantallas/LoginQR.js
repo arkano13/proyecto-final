@@ -541,7 +541,7 @@ export default function LoginQR({ navigation }) {
         behavior={
           Platform.OS === "ios"
             ? "padding"
-            : undefined
+            : "height"
         }
       >
         <View
@@ -687,7 +687,7 @@ export default function LoginQR({ navigation }) {
       behavior={
         Platform.OS === "ios"
           ? "padding"
-          : undefined
+          : "height"
       }
     >
       <View
