@@ -481,10 +481,20 @@ export default function ContratosAdmin({
       return String(ruta);
     }
 
-    const rutaLimpia =
-      String(ruta).replace(/^\/+/, '');
+    const coincidencia =
+      API_BASE_URL.match(
+        /^(https?:\/\/[^/]+)/
+      );
 
-    return `${API_BASE_URL}/${rutaLimpia}`;
+    const servidor = coincidencia
+      ? coincidencia[1]
+      : '';
+
+    if (String(ruta).startsWith('/')) {
+      return `${servidor}${ruta}`;
+    }
+
+    return `${API_BASE_URL}/${ruta}`;
   };
 
   const obtenerColorEstado = (estado) => {

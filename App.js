@@ -54,6 +54,8 @@ import ContratosAdmin from "./src/pantallas/ContratosAdmin";
 import PagosAdmin from "./src/pantallas/PagosAdmin";
 import RegistrarPago from "./src/pantallas/RegistrarPago";
 import Reportes from "./src/pantallas/Reportes";
+import ModuloAcceso from "./src/pantallas/ModuloAcceso";
+import BitacoraScreen from "./src/pantallas/BitacoraScreen";
 
 // Inquilino
 import ExplorarScreen from "./src/pantallas/ExplorarScreen";
@@ -769,6 +771,25 @@ export default function App() {
             component={Reportes}
             options={{
               headerShown: false,
+            }}
+          />
+
+          <Stack.Screen
+            name="ModuloAcceso"
+            component={ModuloAcceso}
+            options={{
+              title:
+                "Módulo de Acceso",
+            }}
+          />
+
+          <Stack.Screen
+            name="BitacoraScreen"
+            component={
+              BitacoraScreen
+            }
+            options={{
+              title: "Bitácora",
             }}
           />
 

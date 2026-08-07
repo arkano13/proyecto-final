@@ -2,14 +2,18 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, Switch, ActivityIndicator, TouchableOpacity
 } from 'react-native';
-import styles from '../estilos/ModuloAccesoStyles';
-import { COLORES } from '../estilos/globales';
+import { Ionicons } from '@expo/vector-icons';
+import crearStyles from '../estilos/ModuloAccesoStyles';
+import SelectorUsuario from '../componentes/SelectorUsuario';
+import { useTema } from '../context/TemaContext';
 import { API_URLS } from '../config/config';
-import { useAuth } from '../context/AuthContext';
 import { registrarBitacora } from '../utils/bitacora';
 
-export default function ModuloAcceso({ navigation }) {
-  const { usuario: usuarioSesion, actualizarModulos } = useAuth();
+export default function ModuloAcceso({ navigation, route }) {
+  const { colores } = useTema();
+  const styles = crearStyles(colores);
+
+  const usuarioSesion = route?.params?.usuario;
 
   const [usuarios, setUsuarios] = useState([]);
   const [usuarioSeleccionado, setUsuarioSeleccionado] = useState(null);
@@ -90,7 +94,7 @@ export default function ModuloAcceso({ navigation }) {
           )
         );
         registrarBitacora(
-          usuarioSesion?.id,
+          usuarioSesion?.id || usuarioSesion?.usuario_id,
           nuevoValor ? 'CONCEDER_ACCESO' : 'QUITAR_ACCESO',
           'tbl_acceso_final',
           `${usuarioSeleccionado.usuario_id}-${modulo.modulo_codigo}`,
@@ -101,22 +105,12 @@ export default function ModuloAcceso({ navigation }) {
 
       // Solo se registra como EXITOSO si el servidor confirmó el guardado
       registrarBitacora(
-        usuarioSesion?.id,
+        usuarioSesion?.id || usuarioSesion?.usuario_id,
         nuevoValor ? 'CONCEDER_ACCESO' : 'QUITAR_ACCESO',
         'tbl_acceso_final',
         `${usuarioSeleccionado.usuario_id}-${modulo.modulo_codigo}`,
         'EXITOSO'
       );
-
-      // Si el admin se está editando accesos a sí mismo, refresca su sesión al instante
-      if (usuarioSesion && usuarioSeleccionado.usuario_id === usuarioSesion.id) {
-        const modulosActualizados = modulos.map((m) =>
-          m.modulo_codigo === modulo.modulo_codigo
-            ? { ...m, acceso_estado: nuevoValor ? 1 : 0 }
-            : m
-        );
-        actualizarModulos(modulosActualizados.filter((m) => m.acceso_estado === 1));
-      }
     } catch (e) {
       setModulos((prev) =>
         prev.map((m) =>
@@ -126,7 +120,7 @@ export default function ModuloAcceso({ navigation }) {
         )
       );
       registrarBitacora(
-        usuarioSesion?.id,
+        usuarioSesion?.id || usuarioSesion?.usuario_id,
         nuevoValor ? 'CONCEDER_ACCESO' : 'QUITAR_ACCESO',
         'tbl_acceso_final',
         `${usuarioSeleccionado.usuario_id}-${modulo.modulo_codigo}`,
@@ -138,66 +132,75 @@ export default function ModuloAcceso({ navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitulo}>🔐 Módulo de Acceso</Text>
-        <Text style={styles.headerSub}>Concede o quita acceso por usuario</Text>
+        <View style={styles.headerIconoContainer}>
+          <Ionicons name="lock-closed" size={24} color={colores.primarioTexto} />
+        </View>
+        <View style={styles.headerTextos}>
+          <Text style={styles.headerTitulo}>Módulo de Acceso</Text>
+          <Text style={styles.headerSub}>Concede o quita acceso por usuario</Text>
+        </View>
       </View>
 
       <Text style={styles.seccionTitulo}>Selecciona un usuario</Text>
 
       {cargandoUsuarios ? (
-        <ActivityIndicator style={{ marginTop: 10 }} color={COLORES.primario} />
+        <ActivityIndicator style={{ marginTop: 10 }} color={colores.primario} />
       ) : usuarios.length === 0 ? (
-        <Text style={styles.vacioTexto}>No hay usuarios registrados todavía.</Text>
+        <View style={styles.vacioContainer}>
+          <Ionicons name="people-outline" size={40} color={colores.textoSecundario} />
+          <Text style={styles.vacioTexto}>No hay usuarios registrados todavía.</Text>
+        </View>
       ) : (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ maxHeight: 60 }}
-          contentContainerStyle={styles.usuariosScroll}
-        >
-          {usuarios.map((u) => {
-            const activo = usuarioSeleccionado?.usuario_id === u.usuario_id;
-            return (
-              <TouchableOpacity
-                key={u.usuario_id}
-                style={[styles.usuarioChip, activo && styles.usuarioChipActivo]}
-                onPress={() => seleccionarUsuario(u)}
-              >
-                <Text style={[styles.usuarioChipTexto, activo && styles.usuarioChipTextoActivo]}>
-                  {u.usuario_nombrecomp || u.usuario_nombre}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+        <SelectorUsuario
+          colores={colores}
+          usuarios={usuarios}
+          usuarioSeleccionado={usuarioSeleccionado}
+          onSeleccionar={seleccionarUsuario}
+          placeholder="Selecciona un usuario"
+        />
       )}
 
       {usuarioSeleccionado && (
         <>
-          <Text style={styles.seccionTitulo}>
-            Módulos de {usuarioSeleccionado.usuario_nombrecomp || usuarioSeleccionado.usuario_nombre}
-          </Text>
+          <Text style={styles.seccionTitulo}>Módulos disponibles</Text>
 
           {cargandoModulos ? (
             <View style={styles.centrado}>
-              <ActivityIndicator color={COLORES.primario} />
+              <ActivityIndicator color={colores.primario} />
             </View>
           ) : (
             <ScrollView contentContainerStyle={styles.moduloContainer}>
-              {modulos.map((m) => (
-                <View key={m.modulo_codigo} style={styles.moduloItem}>
-                  <View>
-                    <Text style={styles.moduloNombre}>{m.modulo_nombre}</Text>
-                    <Text style={styles.moduloCodigo}>{m.modulo_codigo}</Text>
+              {modulos.map((m) => {
+                const activo = !!m.acceso_estado;
+                return (
+                  <View key={m.modulo_codigo} style={styles.moduloItem}>
+                    <View
+                      style={[
+                        styles.moduloIconoContainer,
+                        activo ? styles.moduloIconoActivo : styles.moduloIconoInactivo,
+                      ]}
+                    >
+                      <Ionicons
+                        name={activo ? 'checkmark-circle' : 'lock-closed-outline'}
+                        size={20}
+                        color={activo ? colores.exito : colores.textoSecundario}
+                      />
+                    </View>
+
+                    <View style={styles.moduloTextos}>
+                      <Text style={styles.moduloNombre}>{m.modulo_nombre}</Text>
+                      <Text style={styles.moduloCodigo}>{m.modulo_codigo}</Text>
+                    </View>
+
+                    <Switch
+                      value={activo}
+                      onValueChange={(valor) => toggleAcceso(m, valor)}
+                      trackColor={{ false: colores.borde, true: colores.primarioClaro }}
+                      thumbColor={activo ? colores.primario : '#f4f3f4'}
+                    />
                   </View>
-                  <Switch
-                    value={!!m.acceso_estado}
-                    onValueChange={(valor) => toggleAcceso(m, valor)}
-                    trackColor={{ false: COLORES.borde, true: COLORES.primarioClaro }}
-                    thumbColor={m.acceso_estado ? COLORES.primario : '#f4f3f4'}
-                  />
-                </View>
-              ))}
+                );
+              })}
             </ScrollView>
           )}
         </>

@@ -73,6 +73,20 @@ export default function Perfil({
     setSubiendoFoto,
   ] = useState(false);
 
+  /*
+   * Cambia cada vez que se sube una
+   * foto nueva. Se agrega como query
+   * a la URL para que la imagen no
+   * se quede pegada en la caché del
+   * teléfono cuando el backend
+   * guarda la foto con el mismo
+   * nombre de archivo.
+   */
+  const [
+    fotoVersion,
+    setFotoVersion,
+  ] = useState(Date.now());
+
   const [
     mostrarClave,
     setMostrarClave,
@@ -335,16 +349,34 @@ export default function Perfil({
         'https://'
       )
     ) {
-      return String(ruta);
+      return `${String(
+        ruta
+      )}?v=${fotoVersion}`;
     }
 
-    const rutaLimpia =
-      String(ruta).replace(
-        /^\/+/,
+    /*
+     * El backend devuelve la ruta ya
+     * absoluta desde la raíz del
+     * dominio (incluye "/movilFinal/...").
+     * Si le pegamos API_BASE_URL
+     * completo (que también trae
+     * "/movilFinal"), la ruta queda
+     * duplicada y la imagen da 404.
+     * Por eso usamos solo el origen
+     * del servidor (protocolo + host).
+     */
+    const origenServidor =
+      API_BASE_URL.replace(
+        /\/movilFinal\/?$/,
         ''
       );
 
-    return `${API_BASE_URL}/${rutaLimpia}`;
+    const rutaConSlash =
+      String(ruta).startsWith('/')
+        ? String(ruta)
+        : `/${ruta}`;
+
+    return `${origenServidor}${rutaConSlash}?v=${fotoVersion}`;
   };
 
   const iniciarEdicion = () => {
@@ -781,6 +813,14 @@ export default function Perfil({
 
         await cargarPerfil();
 
+        /*
+         * Forzar que la imagen se
+         * recargue en vez de mostrar
+         * la versión guardada en
+         * caché.
+         */
+        setFotoVersion(Date.now());
+
         mostrarMensaje(
           'Fotografía actualizada',
           'La fotografía de perfil se actualizó correctamente.'
@@ -1016,6 +1056,7 @@ export default function Perfil({
           >
             {foto ? (
               <Image
+                key={foto}
                 source={{ uri: foto }}
                 style={styles.foto}
               />

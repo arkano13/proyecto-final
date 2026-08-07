@@ -388,13 +388,30 @@ export default function MiContrato({
       return String(ruta);
     }
 
-    const rutaLimpia =
-      String(ruta).replace(
-        /^\/+/,
-        ''
+    /*
+     * El backend puede devolver la
+     * ruta ya absoluta desde la raíz
+     * del dominio (con "/movilFinal"
+     * incluido). Si eso pasa, no hay
+     * que volver a pegar API_BASE_URL
+     * completo, o queda duplicado.
+     */
+    const coincidencia =
+      API_BASE_URL.match(
+        /^(https?:\/\/[^/]+)/
       );
 
-    return `${API_BASE_URL}/${rutaLimpia}`;
+    const servidor = coincidencia
+      ? coincidencia[1]
+      : '';
+
+    if (
+      String(ruta).startsWith('/')
+    ) {
+      return `${servidor}${ruta}`;
+    }
+
+    return `${API_BASE_URL}/${ruta}`;
   };
 
   const obtenerNombreArrendador = (

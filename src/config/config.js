@@ -97,6 +97,16 @@ export const API_URLS = {
   REPORTE_RESUMEN_ARRENDADOR: `${API_BASE_URL}/api/reportes/resumenArrendador.php`,
 
   /*
+   * ACCESOS POR MÓDULO
+   */
+
+  LISTAR_USUARIOS: `${API_BASE_URL}/api/accesos/listarUsuarios.php`,
+
+  CONSULTAR_ACCESOS: `${API_BASE_URL}/api/accesos/consultarAccesos.php`,
+
+  GUARDAR_ACCESO: `${API_BASE_URL}/api/accesos/guardarAcceso.php`,
+
+  /*
    * NOTIFICACIONES
    */
 
@@ -114,5 +124,5 @@ export const API_URLS = {
 
   FILTRAR_DISPOSITIVO: `${API_BASE_URL}/api/logs/consultarDispositivo.php`,
 
-  FILTRAR_BITACORA: `${API_BASE_URL}/api/logs/consultarBitacora.php`,
+  FILTRAR_BITACORA: `${API_BASE_URL}/core/consultarBitacora.php`,
 };

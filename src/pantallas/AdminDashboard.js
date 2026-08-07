@@ -67,6 +67,18 @@ const MENU = [
     pantalla: 'Reportes',
   },
   {
+    icono: '🔐',
+    titulo: 'Módulo de Acceso',
+    sub: 'Concede o quita acceso por usuario',
+    pantalla: 'ModuloAcceso',
+  },
+  {
+    icono: '📋',
+    titulo: 'Bitácora',
+    sub: 'Historial de actividad de los últimos 30 días',
+    pantalla: 'BitacoraScreen',
+  },
+  {
     icono: '👤',
     titulo: 'Mi Perfil',
     sub: 'Edita tu información',
@@ -87,6 +99,127 @@ export default function AdminDashboard({
 
   const usuario =
     route?.params?.usuario;
+
+  /*
+   * Solo el usuario con id = 1 ve
+   * siempre Módulo de Acceso y
+   * Bitácora. Para cualquier otro,
+   * depende de lo que le hayan
+   * activado en tbl_acceso_final.
+   */
+  const esSuperAdmin =
+    Number(
+      usuario?.id ||
+        usuario?.usuario_id ||
+        0
+    ) === 1;
+
+  const [
+    accesosModulos,
+    setAccesosModulos,
+  ] = useState(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      const cargarAccesos =
+        async () => {
+          const usuarioIdActual =
+            Number(
+              usuario?.id ||
+                usuario?.usuario_id ||
+                0
+            );
+
+          if (
+            !usuarioIdActual ||
+            esSuperAdmin
+          ) {
+            setAccesosModulos(
+              new Set()
+            );
+
+            return;
+          }
+
+          try {
+            const respuesta =
+              await fetch(
+                API_URLS.CONSULTAR_ACCESOS,
+                {
+                  method: 'POST',
+
+                  headers: {
+                    'Content-Type':
+                      'application/json',
+                  },
+
+                  body: JSON.stringify(
+                    {
+                      usuario_id:
+                        usuarioIdActual,
+                    }
+                  ),
+                }
+              );
+
+            const datos =
+              await respuesta.json();
+
+            if (
+              datos.exito &&
+              Array.isArray(
+                datos.modulos
+              )
+            ) {
+              const permitidos =
+                datos.modulos
+                  .filter(
+                    (m) =>
+                      Number(
+                        m.acceso_estado
+                      ) === 1
+                  )
+                  .map(
+                    (m) =>
+                      m.modulo_activity
+                  );
+
+              setAccesosModulos(
+                new Set(permitidos)
+              );
+            } else {
+              setAccesosModulos(
+                new Set()
+              );
+            }
+          } catch (error) {
+            setAccesosModulos(
+              new Set()
+            );
+          }
+        };
+
+      cargarAccesos();
+    }, [
+      usuario?.id,
+      usuario?.usuario_id,
+      esSuperAdmin,
+    ])
+  );
+
+  const menuVisible = MENU.filter(
+    (item) => {
+      if (esSuperAdmin) {
+        return true;
+      }
+
+      return accesosModulos
+        ? accesosModulos.has(
+            item.pantalla
+          )
+        : false;
+    }
+  );
 
   const [resumen, setResumen] =
     useState(RESUMEN_INICIAL);
@@ -412,7 +545,7 @@ export default function AdminDashboard({
       <View
         style={styles.menuContainer}
       >
-        {MENU.map(
+        {menuVisible.map(
           (item, indice) => (
             <TouchableOpacity
               key={indice}

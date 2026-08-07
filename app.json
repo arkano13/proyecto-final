@@ -7,30 +7,43 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.gelsynest.RentaFacil"
     },
+
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#183A5C"
       },
+
       "edgeToEdgeEnabled": true,
       "softwareKeyboardLayoutMode": "resize",
       "package": "com.gelsynest.RentaFacil",
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyAcOAr8EC6xLi6nFmYfOCK2wRvdFqwcxCc"
+        }
+      }
     },
+
     "web": {
       "favicon": "./assets/favicon.png"
     },
+
     "plugins": [
       "@react-native-community/datetimepicker",
+
       [
         "expo-image-picker",
         {
@@ -39,6 +52,7 @@
           "microphonePermission": false
         }
       ],
+
       [
         "expo-location",
         {
@@ -47,6 +61,7 @@
           "isAndroidBackgroundLocationEnabled": false
         }
       ],
+
       [
         "expo-calendar",
         {
@@ -54,6 +69,7 @@
           "remindersPermission": "RentaFacil necesita acceder a tus recordatorios."
         }
       ],
+
       [
         "expo-notifications",
         {
@@ -62,6 +78,7 @@
           "enableBackgroundRemoteNotifications": false
         }
       ],
+
       [
         "expo-camera",
         {
@@ -70,6 +87,7 @@
           "barcodeScannerEnabled": true
         }
       ],
+
       [
         "expo-build-properties",
         {
@@ -77,9 +95,9 @@
             "usesCleartextTraffic": true
           }
         }
-      ],
-      "expo-secure-store"
+      ]
     ],
+
     "extra": {
       "eas": {
         "projectId": "1ca20c8a-ebfe-4e6f-bc8f-43593270fddb"
